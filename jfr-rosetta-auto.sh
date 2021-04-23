@@ -61,8 +61,8 @@ CPU=1                      # Integer               # Number of CPUs to use  (mak
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
 RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
-RIPDB=dockpdb.pdb               # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
-RINST=4                    # Integer               # How many relaxations? : The number relaxations to make
+RIPDB=1coi.pdb               # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
+RINST=50                    # Integer               # How many relaxations? : The number relaxations to make
 RONSS=1                     # Integer               # How many results to carry through? : The number of best relaxations to carry through to the next stage 
                                                     # Typically do not exceed 10% of the total relaxations if making mutations
 ROMET=True                # True False            # Produce output metrics and graphs for the relaxations. 		!!!!! INCOMPLETE !!!!!
@@ -83,7 +83,7 @@ MITHD=False                 # Filename False        # Threading a sequence to a 
                             #                         must be the same chain, only one chain at present
                             #                         if Filename, provide threading details below (MITHC)
                             #                         if Filename, ensure 'mires.tx' (below) denotes the residue changes in order to generate output. 
-MONST=10                 # Integer               # many mutation runs? : The number of fast-relax-design runs to make PER relaxed structure (CPU must be a factor of this num
+MONST=50                # Integer               # many mutation runs? : The number of fast-relax-design runs to make PER relaxed structure (CPU must be a factor of this num
 MOMET=True                 # True False            # Produce output metrics and graphs for the mutagenesis.  	!!!!! INCOMPLETE !!!!!
 MOSEQ=True                  # True False            # Produce full output sequences (rosetta-full-sequence.fa)
 MOMSQ=True                  # True False            # Produce position specific sequence outputs dependent on resfile, required for clustering (rosetta-spec-sequence.fa), single chain only
@@ -96,7 +96,7 @@ MOPRS=False                 # True False            # Energy breakdown per resid
 # One chain per line, with residue positions, as below
 rm mires.tx 2>/dev/null 
 echo "
-F 92 93 94 95
+A 11 12 13 15 16
 " > mires.tx
 # PICK MUTATION TYPE (see here https://www.rosettacommons.org/docs/latest/rosetta_basics/file_types/resfiles)
 PICKACID=ALLAAxc            # ALLAAxc (all amino acid, not cys) or POLAR (DEHKNQRST) or APOLAR (ACFGILMPVWY)
@@ -120,16 +120,16 @@ subjump=YES                 # YES or NO             # can subunits rigid-body mo
 ########################
 # Analysis of the protein interface between chains.
 INTER=True                  # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
-IIFAC="F"                   # chain_names           # qoute chains of single group, if analaysing the interface between chain groups A and B vs C and D then use "A B"
+IIFAC="A"                   # chain_names           # qoute chains of single group, if analaysing the interface between chain groups A and B vs C and D then use "A B"
 IOSQE=True                  # True False            # For each of the analysed structures output, name - sequence - total energy - interface energy
 IOMET=True                 # True False            # Produce output metrics and graphs for the Interface Energy.			!!!!! INCOMPLETE !!!!!
-IOPRS=True                  # True False            # Energy breakdown per residue across interface output. - THIS PRODUCES A HUGE FILE!
+IOPRS=False                  # True False            # Energy breakdown per residue across interface output. - THIS PRODUCES A HUGE FILE!
 
 ########################
 #       CLUSTER        #
 ########################
 # Sequence clustering and energy analysis.
-action=both               # either 'rmsd' or 'sequence' or 'both' or 'False'
+action=sequence              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
                             # if sequence, will use the mutant sequence.
                             # if rmsd will use the whole protein or a selected range below			
 # select a residue range for the rmsd
@@ -362,120 +362,6 @@ fi
 }
 
 ########################
-#    Sequence Matrix   #   
-########################
-
-seqmatrix ()
-{
-# here we identify sequence similarities by a naive scoring function.
-file=$1
-echo "setting up . . ."
-# check integrity of input
-countnames=$(grep '>' $file | wc -l )
-countsequences=$(grep -v '>' $file | wc -l )
-if [ $countnames != $countsequences ] ; then
-        echo "more than one chain per item, this code is for single chains"
-        exit 0
-fi
-
-# check sequence lengths
-clengthsequences=$(grep -v '>' $file | awk '{print length($0)}' | sort | uniq -c | wc -l )
-if [ $clengthsequences != 1 ] ; then
-        echo "sequences are of different lengths"
-        exit 0
-fi
-lengthsequences=$( grep -v '>' $file | awk '{print length($0)}' | sort | uniq -c | awk '{print $2}')
-
-# generate working files
-echo name > names.tx
-grep '>' $file >> names.tx
-cp names.tx names2.tx
-grep -v '>' $file | sed 's/\(.\{1\}\)/\1,/g' > sequence.tx
-
-### find non-unique sequence positions
-ffirst=1
-# how many amino acids? 
-AAs=$(head -1 sequence.tx | grep -o ',' | wc -l)
-for i in $(seq 1 $AAs) ; do
-	echo -en "\rreducing $i"
-	if [ $(cut -d, -f $i sequence.tx | sort | uniq | wc -l) != 1 ] ; then 
-		if [ $ffirst = 1 ] ; then 
-			cut -d, -f $i sequence.tx > sequence3.tx
-			ffirst=2
-		else 
-			cut -d, -f $i sequence.tx > sequence2.tx
-			paste -d, sequence3.tx sequence2.tx > sequence4.tx
-			mv sequence4.tx sequence3.tx
-		fi
-	fi 
-done
-mv sequence3.tx sequence.tx
-
-for count in $(seq 1 $(grep -v '>' sequence.tx | wc -l) ) ; do
-        echo -en "\rgenerating matrix $count"
-        initial=$(sed -n ''$count'p' sequence.tx)
-        ncount=$(( $count + 1 ))
-        sed -n ''$ncount'p' names.tx > current.tx
-        rm initial.tx 2>/dev/null
-        for i in $(seq 1 $countsequences) ; do
-                echo $initial >> initial.tx
-        done
-
-        awk '
-BEGIN{
-  FS=OFS=","
-}
-FNR==NR{
-  for(i=1;i<=NF;i++){
-    array[FNR,i]=$i
-  }
-  next
-}
-{
-  for(i=1;i<=NF;i++){
-    $i=array[FNR,i] $i
-  }
-}
-1
-' initial.tx  sequence.tx > acumu.tx
-
-        # MERGE THE FILES
-        sed -i 's/AA/0/g;s/CC/0/g;s/DD/0/g;s/EE/0/g;s/FF/0/g;
-                                s/GG/0/g;s/HH/0/g;s/II/0/g;s/KK/0/g;s/LL/0/g;
-                                s/MM/0/g;s/NN/0/g;s/PP/0/g;s/QQ/0/g;s/RR/0/g;
-                                s/SS/0/g;s/TT/0/g;s/VV/0/g;s/WW/0/g;s/YY/0/g' acumu.tx
-        sed -i 's/AP/1/g;s/AS/1/g;s/AT/1/g;s/AG/1/g' acumu.tx
-        sed -i 's/CV/1/g' acumu.tx
-        sed -i 's/DN/1/g;s/DE/1/g' acumu.tx
-        sed -i 's/EN/1/g;s/EQ/1/g;s/EH/1/g;s/ED/1/g' acumu.tx
-        sed -i 's/FW/1/g;s/FY/1/g;s/FL/1/g;s/FI/1/g;s/FM/1/g' acumu.tx
-        sed -i 's/GA/1/g;s/GP/1/g;s/GG/1/g' acumu.tx
-        sed -i 's/HK/1/g;s/HR/1/g;s/HE/1/g;s/HQ/1/g' acumu.tx
-        sed -i 's/IF/1/g;s/IY/1/g;s/IL/1/g;s/IM/1/g;s/IV/1/g' acumu.tx
-        sed -i 's/KR/1/g;s/KQ/1/g;s/KH/1/g' acumu.tx
-        sed -i 's/LF/1/g;s/LY/1/g;s/LV/1/g;s/LI/1/g;s/LM/1/g' acumu.tx
-        sed -i 's/MF/1/g;s/MY/1/g;s/MV/1/g;s/MI/1/g;s/ML/1/g' acumu.tx
-        sed -i 's/NE/1/g;s/ND/1/g;s/NQ/1/g' acumu.tx
-        sed -i 's/PA/1/g;s/PS/1/g;s/PT/1/g;s/PG/1/g' acumu.tx
-        sed -i 's/QK/1/g;s/QE/1/g;s/QH/1/g;s/QN/1/g' acumu.tx
-        sed -i 's/RK/1/g;s/RH/1/g' acumu.tx
-        sed -i 's/SA/1/g;s/SP/1/g;s/ST/1/g;s/SG/1/g' acumu.tx
-        sed -i 's/TA/1/g;s/TP/1/g;s/TS/1/g' acumu.tx
-        sed -i 's/VL/1/g;s/VI/1/g;s/VM/1/g;s/VC/1/g' acumu.tx
-        sed -i 's/WF/1/g;s/WY/1/g' acumu.tx
-        sed -i 's/YW/1/g;s/YF/1/g;s/YL/1/g;s/YI/1/g;s/YM/1/g' acumu.tx
-        sed -i 's/[A-Z][A-Z]/2/g' acumu.tx
-
-        awk -F',' '{ for(i=1; i<=NF;i++) j+=$i; print j; j=0 }' acumu.tx > current2.tx
-        cat current.tx current2.tx > current3.tx
-        paste -d',' names2.tx current3.tx > temp.tx
-        mv temp.tx names2.tx
-done
-mv names2.tx matrix.csv
-echo ''
-}
-
-########################
 #   check CA RMSD      #   
 ########################
 rmsmatrix ()
@@ -539,50 +425,6 @@ cat pdb.list >> rmsh.tx
 paste -d',' rmsh.tx  rms2.tx | sed 's/.pdb//g' > matrix.csv
 }
 
-########################
-#   Cluster function   #  
-########################.
-
-printlink ()
-{
-echo "
-# In[1]: Import
-import seaborn as sns
-import pandas as pd
-from matplotlib import pyplot as plt
-import numpy as np
-from pylab import savefig
-from scipy.spatial import distance
-from scipy.cluster import hierarchy
-
-# In[2]: load sequence similarity matrix as df, set names
-df = pd.read_csv('$met-matrix.csv')
-df = df.set_index('name')
-names=np.array(df.columns.values)
-
-# In[3]: Plot original data as heatmap
-plt.figure(figsize = (12,10))
-sns_heat = sns.heatmap(df)
-figure = sns_heat.get_figure()
-figure.savefig('heat-native.png', dpi=800)
-
-# In[7]:  Generate hierarchy linkage based on one of the following methods
-# 'single', 'complete', 'average', 'ward'
-row_linkage = hierarchy.linkage(distance.pdist(df), method='average')
-
-# Generate Cluster map of hierarchy
-# sns_clus = sns.clustermap(df, row_linkage=row_linkage, col_linkage=row_linkage, figsize=(10, 10))
-# plt.savefig('heat-cluster.png', dpi=800)
-
-# In[5]: Based on 'cutree' pull out linkage groupings
-cutree = [3, 9, 27, 81, 243, 729, 2187]
-my_array = []
-for i in cutree :
-    clusters = hierarchy.fcluster(row_linkage, i, 'maxclust')
-    my_array.append(clusters)
-np.savetxt('heat-clusters.csv', my_array, delimiter=',',  fmt='%s')
-np.savetxt('heat-names.csv', names, fmt='%s') " > cluster-linkage.py
-}
 
 ########################
 #    Graph function    #
@@ -997,6 +839,7 @@ start' > mires-auto.tx
 		
 ####### generate movable selection - using pymol
 		respdb=$(head -1 mipdb-auto.tx)
+		cp $oridir/rosetta-1-relax/$respdb $oridir/$respdb
 		echo "load $oridir/$respdb" > mires.pml
 		sed '/^[[:space:]]*$/d' $oridir/mires.tx | sed "s/ /+/g;s/./ \& i. /2;s/^/+ c. /g" | tr '\n' ' ' | sed "s/^+ /select muts, /g
 " >> mires.pml
@@ -1718,9 +1561,10 @@ fi
 
 #prepare output for the mutations
 if [ $MUTATE = True ] ; then
-	echo 'name,total-REU,total-DDG,Sequence' > mutate-output.csv
+	rm mutate-output.csv 2>/dev/null
+	echo 'name,total-REU,total-DDG,Sequence' > mutate-outputh.csv
 	if [ $INTER = True ] ; then 
-		echo 'name,total-REU,total-DDG,Interface-REU,inter-DDG,Sequence' > mutate-output.csv
+		echo 'name,total-REU,total-DDG,Interface-REU,inter-DDG,Sequence' > mutate-outputh.csv
 	fi
 	for i in $(cat $oridir/mipdb-auto.tx | sed 's/.pdb//g') ; do 
 		if [ $RELAX = True ] ; then 
@@ -1757,7 +1601,8 @@ if [ $MUTATE = True ] ; then
 			
 		done
 	done
-	sort -t',' -k1,1 mutate-output.csv > temp ; mv temp mutate-output.csv
+	sort -t',' -k1,1 mutate-output.csv > temp
+	cat mutate-outputh.csv temp > mutate-output.csv
 fi
 if [ $DEBUG != True ] ; then
 	rm *.tx
@@ -1766,17 +1611,20 @@ fi
 ########################################################################################################################################################################
 #    Clustering    #
 ########################################################################################################################################################################
+
+
+
 echo 5.0 Clustering
 if [ $action = rmsd ] ; then
-	rmsd=yes
-	sequence=no
+	rmsd=no							 			# yes	<--- needs fixing for rmsd matrix
+	sequence=no							 		
 	matrix="rmsd"
 elif [ $action = sequence ] ; then 
-	rmsd=no
+	rmsd=no							 		
 	sequence=yes
 	matrix="sequence"
 elif [ $action = both ] ; then 
-	rmsd=yes
+	rmsd=no							 			# yes	<--- needs fixing for rmsd matrix
 	sequence=yes
 	matrix="rmsd sequence"
 elif [ $action = False ] ; then 
@@ -1789,273 +1637,167 @@ if [ $action != False ] ; then
 	cd  $oridir/rosetta-5-cluster
 fi 
 
-cp $oridir/rosetta-3-inter/$pdb*.pdb .								 		#	<--- this probably need fixing
-for i in $(cat $oridir/mipdb-auto.tx) ; do  
-	cp $oridir/rosetta-1-relax/$i .
-done
-ls -v *.pdb > pdb.list
+#cp $oridir/rosetta-3-inter/$pdb*.pdb .								 		#	<--- needs fixing for rmsd matrix
+#for i in $(cat $oridir/mipdb-auto.tx) ; do  
+#	cp $oridir/rosetta-1-relax/$i .
+#done
+#ls -v *.pdb > pdb.list
 cp $oridir/rosetta-4-analysis/mutate-output.csv .
 cp $oridir/rosetta-4-analysis/rosetta-spec-sequence.fa .
 
-###########################
-## GENERATE SEQUENCE FILE
-if [ $sequence = yes ] ; then 
-	rm mutseq.fa 2>/dev/null
-	for i in $( seq 1 $( grep -v ",Sequence$" mutate-output.csv | wc -l ) ) ; do 
-		name=$(grep -v ",Sequence$" mutate-output.csv | sed -n ''$i'p' | awk -F',' '{print $1}')
-		sequ=$(grep -v ",Sequence$" mutate-output.csv | sed -n ''$i'p' | rev | awk -F',' '{print $1}' | rev )
-		echo '>'$name >> mutseq.fa
-		echo $sequ >> mutseq.fa
-	done
-	seqmatrix mutseq.fa
-	sed 's/>//g' matrix.csv > sequence-matrix.csv
-fi
-
-###########################
-## GENERATE RMSD SIMILARITY MATRIX
-ls -v *.pdb > pdb.list
-if [ $(wc -l < pdb.list) -gt 2000 ] ; then 
-	echo "too many pdbs for rms matrix!"
-	rmsd=no
-fi
 
 if [ $rmsd = yes ] ; then 
-	rmsmatrix 1>/dev/null 
+###########################
+## GENERATE RMSD SIMILARITY MATRIX
+if [ $rmsd = yes ] ; then 
+	ls -v *.pdb > pdb.list
+	if [ $(wc -l < pdb.list) -gt 2000 ] ; then 
+		echo "too many pdbs for rms matrix!"
+		rmsd=no
+	fi 
+fi 
+if [ $rmsd = yes ] ; then
+	firmsmatrix 1>/dev/null 
 	mv matrix.csv rmsd-matrix.csv
 fi
+fi
+
+# 
+if [ $MUTATE = True ] ; then 
+energycol=total-REU
+fi
+if [ $INTER = True ] ; then 
+energycol=Interface-REU
+fi 
 
 ###########################
-## CALCULATE CLUSTER LINKAGE
-
-for met in $matrix ; do 
-
-#for cluslink in single complete average ward ; do 
-for cluslink in average ; do 
-printlink
-rm heat-clusters.csv heat-names.csv 2>/dev/null 
-sed -i "s/average/$cluslink/g" cluster-linkage.py
-
-echo '
-Calculating linkage'
-python3 cluster-linkage.py
-
-
-########################
-#    clean heat-names  #			<--- does this need fixing/removing?  do we still have #'.pdb_chain' identifiers?
-########################
-if [ $met = sequence ] ; then 
-sed -i "s/.pdb_$chain//g" heat-names.csv
-fi
-########################
-#   No Dendrogram      # 
-########################
-sed 's/,/ /g' heat-clusters.csv > heat-clusters-2.tx
-transpose  heat-clusters-2.tx  | nl > heat-clusters-1.tx
-colv=$(awk '{print NF}' heat-clusters-1.tx | sort -nu | tail -n 1)
-sort -n -k$colv,$colv heat-clusters-1.tx | nl | sort -n -k2,2 | awk '{print $1}' > neworder1.tx
-echo '0' > head.tx
-cat head.tx neworder1.tx > neworder.tx
-paste neworder.tx $met-matrix.csv | sed 's/,/ /g' | sort -n -k1,1 | cut -f 2- > newmat1.tx
-transpose newmat1.tx | sed 's/ /,/g' > newmat1t.tx
-paste -d',' neworder.tx newmat1t.tx | sort -n -k1,1 | cut -d',' -f 2- > clustered-matrix.csv
-
+## GENERATE SEQUENCE SIMILARITY MATRIX AND ENERGY OVERLAY
+if [ $sequence = yes ] ; then	
 echo "
-import seaborn as sns
-import pandas as pd
-from matplotlib import pyplot as plt
 import numpy as np
-from pylab import savefig
-
-# In[2]: load sequence similarity matrix as df, set names
-df = pd.read_csv('clustered-matrix.csv')
-df = df.set_index('name')
-names=np.array(df.columns.values)
-
-# In[3]: Plot original data as heatmap
-plt.figure(figsize = (12,10))
-sns_heat = sns.heatmap(df)
-figure = sns_heat.get_figure()
-figure.savefig('heat-cluster-matrix.png', dpi=800) "> cluster-matrix.py
-echo 'Generate Cluster-map'
-python3 cluster-matrix.py
-
-########################
-# average energy matrix #
-########################
-sed -i 's/,/ /g' heat-clusters.csv
-transpose heat-clusters.csv | sed 's/ /,/g' > transout.tx
-
-sed 's/-chain.//g;s/>//g' heat-names.csv > heat-names2.tx
-#sed '1,2d'  no_pack_input_score.sc | awk '{print $42}' | sed 's/_0001$//g'  > namecheck.tx
-if [ $INTER = True ] ; then 
-	energyval=4
-else
-	energyval=2
-fi
-grep -v ",Sequence$" mutate-output.csv |  awk -F',' '{print $1}' > namecheck.tx
-grep -v ",Sequence$" mutate-output.csv |  awk -F',' -v var=$energyval  '{print $var}'  > interenegy.tx
-
-if [ $(sdiff heat-names2.tx namecheck.tx | grep "|\|>\|<" | wc -l ) != 0 ] ; then
-        echo 'we have found that the total length or order of the data in the score files and matrix analysis differs'
-        sdiff heat-names2.tx namecheck.tx | grep "|\|>\|<"
-        sdiff heat-names2.tx namecheck.tx | grep "|\|>\|<" > issue.tx
-        if [ $(awk '{print $1}' issue.tx) = '>' ] ; then
-                issue=$(nl heat-names.csv | grep $(awk '{print $2}' issue.tx) | awk '{print $1}')
-                sed -i ''$issue'd' heat-names.csv
-                sed -i ''$issue'd' interenegy.tx
-                if [ $(sdiff heat-names2.tx namecheck.tx | grep "|\|>\|<" | wc -l ) != 0 ] ; then
-                        echo 'we could not fix the problem!'
-                        exit 0
-                fi
-        fi
-fi
-
-if [ $(wc -l < heat-names2.tx) = $(wc -l < interenegy.tx) ] && [ $(wc -l < heat-names2.tx) = $(wc -l < transout.tx) ] ; then
-        paste -d',' heat-names2.tx interenegy.tx transout.tx > naengr.tx
-else
-        echo ' heat-names2.tx interenegy.tx transout.tx are not equal in length!!!!'
-        wc -l heat-names2.tx interenegy.tx transout.tx
-        exit 0
-fi
-
-
-
-sort -nt, -k$(head naengr.tx | awk -F ',' '{print NF}' | sort -nu | head -n 1),$(head naengr.tx | awk -F ',' '{print NF}' | sort -nu | head -n 1) naengr.tx > naengrst.tx
-#sed -i 's/,$//g' naengrst.tx
-#namelen=$(awk -F',' '{print $1}' naengrst.tx | sort | uniq | wc -L)
-#cut -c 1-$(($namelen-$ndigits)) naengrst.tx > front_name.tx
-#cut -c $(($namelen-$ndigits+1))-$namelen naengrst.tx | awk -F',' '{print $1}' | sed 's/^/000000/g' | rev | cut -c 1-$ndigits | rev > back_name.tx
-#awk -F',' '{print $2,$3,$4,$5,$6,$7,$8,$9,$10}' naengrst.tx > rest.tx
-
-#paste  front_name.tx back_name.tx | awk '{print $1$2}' > dname.tx
-#paste -d',' dname.tx rest.tx | sed 's/ /,/g;s/,*$//g' > naengrst.tx
-
-
-####  DEBUG
-#mv heat-cluster-matrix.png $cluslink-cluster-matrix.png
-#done
-#exit 0
-
-# fix wild-type
-for wtname in $(grep -v _.*_ naengrst.tx | awk -F',' '{print $1}') ; do 
-	sed -i "s/$wtname,/$wtname-wt,/g" naengrst.tx
-done
-#echo wt-name is $wtname
-
-# take total average
-totave=$(awk -F',' '{print $2}' naengrst.tx | awk -F',' '{ sum += $1; n++ } END { if (n > 0) print sum / n; }' | sed 's/ /,/g')
-
-# how many columns
-cols=$(head naengrst.tx | awk -F ',' '{print NF}' | sort -nu | head -n 1)
-
-# make side-header
-awk -F',' '{print $1}' naengrst.tx  > sider.tx
-nl sider.tx | sort -V -k2,2 > nsider.tx  		# ADDED -V HERE FOR LOCAL
-rm  assem2.csv assem2.tx  2>/dev/null
-cp sider.tx assem2.tx
-touch assem2.csv
-total=$(wc -l < sider.tx)
-count=1
-scount=1
-# make general average matrix
-cp sider.tx assem.tx
-date
-for name in $(cat sider.tx) ; do
-
-#name=$(head -1 sider.tx)
-if [ $scount -le 1001 ] ; then
-
-echo -en "\rstarting $name, $count of $total"
-grep "$name," naengrst.tx > currentline.tx
-rm assembly.tx assembly3.tx seen.tx 2>/dev/null
-touch seen.tx
-cp naengrst.tx naengrstemp.tx
-for group in $(seq $cols -1 3 ) ; do
-
-groupval=$(awk -F',' -v gpv=$group '{print $gpv}' currentline.tx)
-groupaveval=$(awk -F',' -v col=$group -v gpv=$groupval '{if ($col == gpv) print $2;}' naengrstemp.tx | awk -F',' '{ sum += $1; n++ } END { if (n > 0) print sum / n; }' | sed 's/ /,/g')
-
-awk -F',' -v col=$group -v gpv=$groupval '{if ($col == gpv) print $1;}' naengrstemp.tx | sed "s/$/ $groupaveval/g" > assembly3.tx
-
-grep -v -f seen.tx assembly3.tx >> assembly.tx
-
-awk '{print $1}' assembly3.tx >> seen.tx
-sort seen.tx | uniq > seen2.tx
-mv seen2.tx seen.tx
-
-#debug
-#head assembly3.tx  assembly.tx seen.tx
-#wc -l assembly3.tx  assembly.tx seen.tx
-#echo group $group groupval $groupval groupaveval $groupaveval totave $totave
-
-done
-
-awk -F',' '{print $1}' naengrstemp.tx | sed "s/$/ $totave/g" > assembly3.tx
-grep -v -f seen.tx assembly3.tx >> assembly.tx
-
-nl assembly.tx | awk '{print $1,$2,$3}' | sort -V -k2,2 > nassembly.tx
-paste nsider.tx  nassembly.tx | sort -n -k1,1 | awk '{print $5}' > assem.tx
-paste -d',' assem2.tx assem.tx > assem3.tx
-mv assem3.tx assem2.tx
-count=$(($count + 1))
-
-#debug
-#cat  assembly3.tx  assembly.tx nassembly.tx  assem.tx assem3.tx assem2.tx
-#wc -l assembly3.tx  assembly.tx nassembly.tx  assem.tx assem3.tx assem2.tx
-
-fi
-if [ $scount = 1000 ] ; then
-sed -i 's/^,//g;s/,$//g' assem2.csv
-sed -i 's/^,//g;s/,$//g' assem2.tx
-paste -d',' assem2.csv assem2.tx > assem3.tx
-mv assem3.tx assem2.csv
-rm  assem2.tx ; touch assem2.tx
-scount=0
-fi
-scount=$(($scount + 1))
-
-done
-sed -i 's/^,//g;s/,$//g' assem2.csv
-sed -i 's/^,//g;s/,$//g' assem2.tx
-paste -d',' assem2.csv assem2.tx > assem3.tx
-mv assem3.tx assem2.csv
-
-echo '
-'
-date
-echo name > name.tx
-cat name.tx sider.tx > header1.tx
-transpose header1.tx | sed 's/ /,/g' > header2.tx
-cat header2.tx assem2.csv > average-matrix.csv
-
-sed -i "s/^,//g;s/,$//g" average-matrix.csv
-
-echo "
-import seaborn as sns
 import pandas as pd
-from matplotlib import pyplot as plt
-import numpy as np
-from pylab import savefig
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics.pairwise import euclidean_distances
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.spatial import distance
+from scipy.cluster import hierarchy
 
-df = pd.read_csv('average-matrix.csv')
-df = df.set_index('name')
-names=np.array(df.columns.values)
+
+codes = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
+         'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+
+
+def one_hot_encode(seq):
+    o = list(set(codes) - set(seq))
+    s = pd.DataFrame(list(seq))    
+    x = pd.DataFrame(np.zeros((len(seq),len(o)),dtype=int),columns=o)    
+    a = s[0].str.get_dummies(sep=',')
+    a = a.join(x)
+    a = a.sort_index(axis=1)
+    e = a.values.flatten()
+    return e
+
+def encode():
+    mutseq = pd.read_csv('mutate-output.csv')
+    
+    sequences = mutseq['Sequence']
+    
+    encoded = np.array([one_hot_encode(seq) for seq in sequences])
+    
+    np.save('encoded_sequenced.npy', encoded)
+    return mutseq 
+'''
+def cluster(distances, n_clusters):
+    
+    model = AgglomerativeClustering(linkage='average', n_clusters=n_clusters)
+    
+    model.fit(distances)
+    
+    return model.labels_    
+'''    
+df=encode()
+
+X = np.load('encoded_sequenced.npy')
+distances = euclidean_distances(X, X)
 
 plt.figure(figsize = (12,10))
-sns_heat = sns.heatmap(df)
+sns_heat = sns.heatmap(distances)
 figure = sns_heat.get_figure()
-figure.savefig('heat-average.png', dpi=800) " > average-matrix.py
+figure.savefig('heat-native.png', dpi=800)
+plt.clf()
 
-python3 average-matrix.py
+row_linkage = hierarchy.linkage(distances, method='average')
 
-mv heat-native.png heat-native-$met.png
-mv heat-cluster-matrix.png $cluslink-heat-cluster-matrix-$met.png
-mv heat-average.png $cluslink-heat-average-$met.png
-mv naengrstemp.tx $cluslink-naengrst-$met.csv
-mv average-matrix.csv $cluslink-average-matrix-$met.csv
+cutree = [1, 3, 9, 27, 81, 243, 729]
+my_array = []
+for i in cutree :
+    clusters = hierarchy.fcluster(row_linkage, i, 'maxclust')
+    my_array.append(clusters)
 
-if [ $DEBUG != True ] ; then
-	rm *.tx *.pdb
+
+my_array = np.array(my_array)
+
+# Get sorted indices
+sorted_indices = my_array[-1,:].argsort()
+
+# Index distances with sorted indices
+distances = distances[sorted_indices]
+
+# Transpose and sort again 
+distances = distances.T[sorted_indices]
+
+
+np.savetxt('heat-clusters.csv', distances , delimiter=',',  fmt='%s')
+
+plt.figure(figsize = (12,10))
+sns_heat = sns.heatmap(distances)
+figure = sns_heat.get_figure()
+figure.savefig('heat-cluster.png', dpi=800) 
+
+#print(my_array)
+
+for i, n in enumerate(cutree):
+    
+    df[f'n{n}'] = my_array[i,:]
+    df[f'e{n}'] = 0
+    
+    for j in range(1, n+1):
+        
+        mean = df['$energycol'].loc[df[f'n{n}'] == j].mean()
+        df[f'e{n}'].loc[df[f'n{n}'] == j] = mean
+
+df['mean_energy'] = 0
+
+cluster_columns = [f'n{n}' for n in cutree]
+energy_columns = [f'e{n}' for n in cutree]
+
+cluster_columns = df[cluster_columns].to_numpy()
+energy_columns = df[energy_columns].to_numpy()
+ 
+
+matrix = []
+for i, x in enumerate(cluster_columns):
+    matrix_row = []
+    for j, y in enumerate(cluster_columns):
+        matrix_row.append(energy_columns[i, np.where(x == y)[0][-1]])
+    matrix.append(matrix_row)
+
+matrix = np.array(matrix)
+
+# Index distances with sorted indices
+matrix = matrix[sorted_indices]
+
+# Transpose and sort again 
+matrix = matrix.T[sorted_indices]
+
+
+plt.figure(figsize = (12,10))
+sns_heat = sns.heatmap(np.array(matrix))
+figure = sns_heat.get_figure()
+figure.savefig('heat-average.png', dpi=800)
+" > mc.py
+python mc.py
 fi
 
 done
