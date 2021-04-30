@@ -61,7 +61,7 @@ CPU=1                      # Integer               # Number of CPUs to use  (mak
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
 RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
-RIPDB=1coi.pdb               # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
+RIPDB=traj_1.pdb               # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
 RINST=50                    # Integer               # How many relaxations? : The number relaxations to make
 RONSS=1                     # Integer               # How many results to carry through? : The number of best relaxations to carry through to the next stage 
                                                     # Typically do not exceed 10% of the total relaxations if making mutations
@@ -206,6 +206,13 @@ fi
 #    OPTIONS CHECK     #
 ########################
 
+# remove underscores from file names and fix stuff
+RIPDBo=$RIPDB
+RIPDB=$(echo $RIPDB | sed 's/_/-/g')  2>/dev/null 
+sed 's/HIE/HIS/g;s/HSD/HIS/g;s/HSE/HIS/g;s/CYX/CYS/g' $RIPDBo > $RIPDB
+sed -i 's/_/-/g' $MIPDB  2>/dev/null 
+
+
 # checking for contridictory or badly formatted inputs
 
 if [ $RELAX = True ] ; then
@@ -213,6 +220,10 @@ if [ $RELAX = True ] ; then
 		echo "read initial pdb file as $RIPDB for relaxations"
 		# how many chains?
 		cnum=$(grep ' CA ' $RIPDB | cut -c 22 | sort | uniq  | sed '/^[[:space:]]*$/d' | wc -l )
+		if [ $cnum = 0 ] ; then
+			echo "Hey!! there aren't any chain names, please name your chains!"
+			exit 0
+		fi
 		# how many segments?
 		snum=$(grep ' CA ' $RIPDB | cut -c 73-76 | sort | uniq | sed '/^[[:space:]]*$/d' | wc -l )
 		echo $cnum chains and $snum segments
@@ -296,9 +307,6 @@ if [ $MIRES != False ] && [ $MITHD != False ] ; then
 	exit = 0 
 fi
 
-# remove underscores from file names
-RIPDB=$(echo $RIPDB | sed 's/_/-/g')  2>/dev/null 
-sed -i 's/_/-/g' $MIPDB  2>/dev/null 
 
 ########################
 #      transpose       #
@@ -643,6 +651,7 @@ if [ $RELAX = True ] ; then
 rm -r $oridir/rosetta-1-relax 2>/dev/null 
 mkdir $oridir/rosetta-1-relax
 cd $oridir/rosetta-1-relax
+#cp $oridir/$RIPDB rosetta-1-relax/$RIPDB
 
 	echo '1.0 Relaxation'
 	
@@ -769,7 +778,7 @@ done' > run-cpu$i
 		done
 		scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoRelax/score.sc . 1>/dev/null
 		scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoRelax/*.pdb . 1>/dev/null
-		ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoRelax
+		#ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoRelax
 		if [ $( wc -l < score.sc ) -gt 2 ] ; then 
 			echo -en "\rsubmitted relax to $COMPUTE, job successful              "
 			if [ $DEBUG != True ] ; then
@@ -1124,7 +1133,7 @@ save combined.pdb, combined" >> mires.pml
                                 sed '1,2d' scoret.tx >> score.sc
                         fi
 			scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/*.pdb . 1>/dev/null
-			ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoMutate
+			#ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoMutate
 			if [ $( wc -l < scoret.tx ) = $(( 2 + $MONST)) ] ; then 
 				echo -en "\rsubmitted Mutate to $COMPUTE, job successful              "
 			else
