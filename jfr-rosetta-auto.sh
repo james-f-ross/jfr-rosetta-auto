@@ -42,7 +42,7 @@
 # INPUT OPTIONS
 # Option                    # Expected              # Comments
 
-COMPUTE=arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
+COMPUTE=LOCAL #arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
                             # if not local, it is assumed to be an arc cluster at the univerity of leeds, or another SGE cluster
                             # if not local, it is assumed you have already passed you ssh $PROXY id to the remote machine
 HOURS=04:00:00              # HH:MM:SS for arc run  # this must exceed the maximum time, please wildly overestimate.
@@ -51,7 +51,7 @@ EMAIL=chmjro@leeds.ac.uk     # email address         # your email address
 remotedir=/nobackup/chmjro   # path                  # home directory on remote machine
 PROXYJUMP=FALSE           # FALSE or proxy jump user and address [user]@remote-access.leeds.ac.uk
 
-CPU=1                      # Integer               # Number of CPUs to use  (make sure RINST and MONST are equal or greater than CPUs)
+CPU=2                      # Integer               # Number of CPUs to use  (make sure RINST and MONST are equal or greater than CPUs)
                             # only for local, HPC uses a defualt of 100, though 50 are usually given
 
 ########################
@@ -61,18 +61,20 @@ CPU=1                      # Integer               # Number of CPUs to use  (mak
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
 RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
-RIPDB=traj_1.pdb               # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
-RINST=50                    # Integer               # How many relaxations? : The number relaxations to make
+RIPDB=3-fold-axis.pdb              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
+RIRMM=move.map              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
+RINST=2                    # Integer               # How many relaxations? : The number relaxations to make
 RONSS=1                     # Integer               # How many results to carry through? : The number of best relaxations to carry through to the next stage 
                                                     # Typically do not exceed 10% of the total relaxations if making mutations
 ROMET=True                # True False            # Produce output metrics and graphs for the relaxations. 		!!!!! INCOMPLETE !!!!!
-ROPRS=False                 # True False            # Energy breakdown per residue output. - THIS PRODUCES A HUGE FILE!
+ROPRS=True                 # True False            # Energy breakdown per residue output. - THIS PRODUCES A HUGE FILE!
+
 
 ########################
 #       MUTATE         #
 ########################
 # Mutagenesis of the protein structure using rosetta fast relax and design.
-MUTATE=True                 # True False            # Mutate structure : Use rosetta fast relax and design, creates output folder 'rosetta-2-mutate'
+MUTATE=False                 # True False            # Mutate structure : Use rosetta fast relax and design, creates output folder 'rosetta-2-mutate'
 MIPDB=False               # Filename False        # Input filelist : file with list of input pdbs, can contain a single pdb, 
                             #                         only use if no relaxation, otherwise "RONSS" determines input list.
                             #		                  i.e. 'False' is the default which takes inputs from the relaxation.
@@ -119,7 +121,7 @@ subjump=YES                 # YES or NO             # can subunits rigid-body mo
 #      INTERFACE       #
 ########################
 # Analysis of the protein interface between chains.
-INTER=True                  # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
+INTER=False                  # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
 IIFAC="A"                   # chain_names           # qoute chains of single group, if analaysing the interface between chain groups A and B vs C and D then use "A B"
 IOSQE=True                  # True False            # For each of the analysed structures output, name - sequence - total energy - interface energy
 IOMET=True                 # True False            # Produce output metrics and graphs for the Interface Energy.			!!!!! INCOMPLETE !!!!!
@@ -129,7 +131,7 @@ IOPRS=False                  # True False            # Energy breakdown per resi
 #       CLUSTER        #
 ########################
 # Sequence clustering and energy analysis.
-action=sequence              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
+action=False              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
                             # if sequence, will use the mutant sequence.
                             # if rmsd will use the whole protein or a selected range below			
 # select a residue range for the rmsd
@@ -207,9 +209,8 @@ fi
 ########################
 
 # remove underscores from file names and fix stuff
-RIPDBo=$RIPDB
 RIPDB=$(echo $RIPDB | sed 's/_/-/g')  2>/dev/null 
-sed 's/HIE/HIS/g;s/HSD/HIS/g;s/HSE/HIS/g;s/CYX/CYS/g' $RIPDBo > $RIPDB
+sed 's/HIE/HIS/g;s/HSD/HIS/g;s/HSE/HIS/g;s/CYX/CYS/g' $RIPDB > temp.tx ; mv temp.tx $RIPDB
 sed -i 's/_/-/g' $MIPDB  2>/dev/null 
 
 
@@ -648,10 +649,10 @@ fi
 
 if [ $RELAX = True ] ; then
 
-rm -r $oridir/rosetta-1-relax 2>/dev/null 
-mkdir $oridir/rosetta-1-relax
-cd $oridir/rosetta-1-relax
-#cp $oridir/$RIPDB rosetta-1-relax/$RIPDB
+	rm -r $oridir/rosetta-1-relax 2>/dev/null 
+	mkdir $oridir/rosetta-1-relax
+	cd $oridir/rosetta-1-relax
+	#cp $oridir/$RIPDB rosetta-1-relax/$RIPDB
 
 	echo '1.0 Relaxation'
 	
@@ -685,6 +686,11 @@ cd $oridir/rosetta-1-relax
 -database /usr/local/rosetta/main/database
 -nstruct $(( $RINST / $CPU ))
 -score:weights ref2015" > rflag$i.file
+			# is there a move map restaint file?
+			if [ $RIRMM != False ] ; then 
+				cp $oridir/$RIRMM .
+				echo "-in:file:movemap $RIRMM" >> rflag$i.file
+			fi
 			#make a rosetta executable per cpu and run them
 			echo '
 for j in $(seq '$i' '$CPU' $(wc -l < '$RIPDBL') ) ; do
@@ -1355,7 +1361,7 @@ if [ $cenperes = True ] ; then
 
 	# For local computation
 	if [ $IOPRS = True ] && [ $COMPUTE = LOCAL ] ; then 
-		echo "4.1 - Running remote energy breakdown	analysis"
+		echo "4.1 - Running energy breakdown	analysis"
 		# process the input list for the number of CPUs
 		for i in $(seq 1 $CPU) ; do
 			#make a temp directory per cpu
