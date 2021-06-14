@@ -42,14 +42,14 @@
 # INPUT OPTIONS
 # Option                    # Expected              # Comments
 
-COMPUTE=LOCAL #arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
-                            # if not local, it is assumed to be an arc cluster at the univerity of leeds, or another SGE cluster
+COMPUTE=arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
+                          # if not local, it is assumed to be an arc cluster at the univerity of leeds, or another SGE cluster
                             # if not local, it is assumed you have already passed you ssh $PROXY id to the remote machine
 HOURS=04:00:00              # HH:MM:SS for arc run  # this must exceed the maximum time, please wildly overestimate.
 USER=chmjro                 # string                # your username on the remote machine, if required
 EMAIL=chmjro@leeds.ac.uk     # email address         # your email address
 remotedir=/nobackup/chmjro   # path                  # home directory on remote machine
-PROXYJUMP=FALSE           # FALSE or proxy jump user and address [user]@remote-access.leeds.ac.uk
+PROXYJUMP=chmjro@remote-access.leeds.ac.uk           # FALSE or proxy jump user and address [user]@remote-access.leeds.ac.uk
 
 CPU=2                      # Integer               # Number of CPUs to use  (make sure RINST and MONST are equal or greater than CPUs)
                             # only for local, HPC uses a defualt of 100, though 50 are usually given
@@ -61,8 +61,8 @@ CPU=2                      # Integer               # Number of CPUs to use  (mak
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
 RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
-RIPDB=3-fold-axis.pdb              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
-RIRMM=move.map              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
+RIPDB=1coi.pdb              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
+RIRMM=FALSE              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
 RINST=2                    # Integer               # How many relaxations? : The number relaxations to make
 RONSS=1                     # Integer               # How many results to carry through? : The number of best relaxations to carry through to the next stage 
                                                     # Typically do not exceed 10% of the total relaxations if making mutations
@@ -74,7 +74,7 @@ ROPRS=True                 # True False            # Energy breakdown per residu
 #       MUTATE         #
 ########################
 # Mutagenesis of the protein structure using rosetta fast relax and design.
-MUTATE=False                 # True False            # Mutate structure : Use rosetta fast relax and design, creates output folder 'rosetta-2-mutate'
+MUTATE=True                 # True False            # Mutate structure : Use rosetta fast relax and design, creates output folder 'rosetta-2-mutate'
 MIPDB=False               # Filename False        # Input filelist : file with list of input pdbs, can contain a single pdb, 
                             #                         only use if no relaxation, otherwise "RONSS" determines input list.
                             #		                  i.e. 'False' is the default which takes inputs from the relaxation.
@@ -85,7 +85,7 @@ MITHD=False                 # Filename False        # Threading a sequence to a 
                             #                         must be the same chain, only one chain at present
                             #                         if Filename, provide threading details below (MITHC)
                             #                         if Filename, ensure 'mires.tx' (below) denotes the residue changes in order to generate output. 
-MONST=50                # Integer               # many mutation runs? : The number of fast-relax-design runs to make PER relaxed structure (CPU must be a factor of this num
+MONST=10                # Integer               # many mutation runs? : The number of fast-relax-design runs to make PER relaxed structure (CPU must be a factor of this num
 MOMET=True                 # True False            # Produce output metrics and graphs for the mutagenesis.  	!!!!! INCOMPLETE !!!!!
 MOSEQ=True                  # True False            # Produce full output sequences (rosetta-full-sequence.fa)
 MOMSQ=True                  # True False            # Produce position specific sequence outputs dependent on resfile, required for clustering (rosetta-spec-sequence.fa), single chain only
@@ -125,7 +125,7 @@ INTER=False                  # True False            # Analyse interface : Use t
 IIFAC="A"                   # chain_names           # qoute chains of single group, if analaysing the interface between chain groups A and B vs C and D then use "A B"
 IOSQE=True                  # True False            # For each of the analysed structures output, name - sequence - total energy - interface energy
 IOMET=True                 # True False            # Produce output metrics and graphs for the Interface Energy.			!!!!! INCOMPLETE !!!!!
-IOPRS=False                  # True False            # Energy breakdown per residue across interface output. - THIS PRODUCES A HUGE FILE!
+IOPRS=True                  # True False            # Energy breakdown per residue across interface output. - THIS PRODUCES A HUGE FILE!
 
 ########################
 #       CLUSTER        #
@@ -1410,7 +1410,7 @@ done' > run-cpu$i
 -score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
 
 /apps/applications/rosetta/3.10/1/default/main/source/bin/residue_energy_breakdown.linuxgccrelease @flag_"'$SGE_TASK_ID'".file
-mv default.out perres.out
+cat default.out >> perres.out ; rm default.out
 	" >> remote.tx
 		cat remote.tx | sed "s/XXX/$(wc -l < pdb.list)/g;s/YYY/100/g;s#VVV#$remotedir/$date-RosettaAutoPer#g" > run-rosetta-perres.sh
 		scp $PROXY run-rosetta-perres.sh $USER@$COMPUTE:$remotedir/$date-RosettaAutoPer/. 1>/dev/null
@@ -1428,7 +1428,9 @@ mv default.out perres.out
 			sleep 20
 		done
 		#echo "downloading energy breakdown, of size $(ssh $PROXY $USER@$COMPUTE ls -lh $remotedir/$date-RosettaAutoPer | grep perres.out | awk '{print $5}')"
+		ssh $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoPer "sort perres.out | uniq > perres2.out ; mv perres2.out perres.out"
 		scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoPer/perres.out .
+		sort perres.out | uniq > perres2.out ; mv perres2.out perres.out
 		ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoPer
 		if [ $( wc -l < perres.out ) -gt 2 ] ; then 
 			echo -en "\rsubmitted energy breakdown analyzer to $COMPUTE, job successful              "
