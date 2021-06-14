@@ -242,9 +242,9 @@ if [ $RELAX = True ] ; then
 					for segi in $(grep ' CA ' $RIPDB | cut -c 73-76 | sort | uniq) ; do 
 						chain=$(echo $segi | cut -c 4)
 						grep $segi fix-$RIPDB | sed "s/./$chain/22" >> fixt-$RIPDB
-						echo TER >> fixt-$RIPDB ; mv fixt-$RIPDB fix-$RIPDB 
+						echo TER >> fixt-$RIPDB 
 					done
-					
+					mv fixt-$RIPDB fix-$RIPDB 
 				else
 					echo "please check input file chain and segment identifiers, they are currently incompatible with this script."
 					exit 0
@@ -1407,11 +1407,10 @@ done' > run-cpu$i
 		scp $PROXY $oridir/rosetta-4-analysis/pdb.list $USER@$COMPUTE:$remotedir/$date-RosettaAutoPer/. 1>/dev/null		
 		echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -in:file:s "'$(sed -n ""$SGE_TASK_ID"p"'" pdb.list)
--score:weights ref2015
--out:file:score_only perres.out \" > flag_"'$SGE_TASK_ID'".file
+-score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
 
 /apps/applications/rosetta/3.10/1/default/main/source/bin/residue_energy_breakdown.linuxgccrelease @flag_"'$SGE_TASK_ID'".file
-cat default.out >> perres.out
+mv default.out perres.out
 	" >> remote.tx
 		cat remote.tx | sed "s/XXX/$(wc -l < pdb.list)/g;s/YYY/100/g;s#VVV#$remotedir/$date-RosettaAutoPer#g" > run-rosetta-perres.sh
 		scp $PROXY run-rosetta-perres.sh $USER@$COMPUTE:$remotedir/$date-RosettaAutoPer/. 1>/dev/null
