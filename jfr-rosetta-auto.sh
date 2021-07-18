@@ -60,7 +60,7 @@ CPU=2                      # Integer               # Number of CPUs to use  (mak
 # It is highly recommended that structures are relaxed prior to any analysis with rosetta
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
-RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
+RELAX=False                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
 RIPDB=1coi.pdb              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
 RIRMM=FALSE              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
 RINST=2                    # Integer               # How many relaxations? : The number relaxations to make
@@ -75,7 +75,7 @@ ROPRS=True                 # True False            # Energy breakdown per residu
 ########################
 # Mutagenesis of the protein structure using rosetta fast relax and design.
 MUTATE=True                 # True False            # Mutate structure : Use rosetta fast relax and design, creates output folder 'rosetta-2-mutate'
-MIPDB=False               # Filename False        # Input filelist : file with list of input pdbs, can contain a single pdb, 
+MIPDB=pdb.list               # Filename False        # Input filelist : file with list of input pdbs, can contain a single pdb, 
                             #                         only use if no relaxation, otherwise "RONSS" determines input list.
                             #		                  i.e. 'False' is the default which takes inputs from the relaxation.
 MIRES=False                 # Filename False        # Res file input : Provide a rosetta res file with mutation options
@@ -98,7 +98,7 @@ MOPRS=False                 # True False            # Energy breakdown per resid
 # One chain per line, with residue positions, as below
 rm mires.tx 2>/dev/null 
 echo "
-A 11 12 13 15 16
+A 11 12 13 14 15 16 17 18 19
 " > mires.tx
 # PICK MUTATION TYPE (see here https://www.rosettacommons.org/docs/latest/rosetta_basics/file_types/resfiles)
 PICKACID=ALLAAxc            # ALLAAxc (all amino acid, not cys) or POLAR (DEHKNQRST) or APOLAR (ACFGILMPVWY)
@@ -151,6 +151,9 @@ DEBUG=True                  # True False            # If True, then intermediate
 # find the current working directory
 oridir=$(pwd)
 
+# force passed unknown reidues
+passunk=yes				# yes no					# if yes, unknown residues will be deleted or cause error
+
 ########################
 # PROGRAM DEPENDENCIES #
 ########################
@@ -158,30 +161,30 @@ oridir=$(pwd)
 ########################
 # rosetta			# 
 if [ $COMPUTE = LOCAL ] ; then 
-if [ $(which score_jd2.*.linuxgccrelease | wc -l ) = 0 ] ; then 
-	echo 'Rosetta not located on your path, seaching now . . .'
-	rpath=$(locate get_fasta_from_pdb.py | head -1)
-	if [ $(echo $rpath | wc -l ) = 1 ] ; then 
-		rbpath=$(echo $rpath | sed 's#/tools/protein_tools/scripts/get_fasta_from_pdb.py#/main/source/bin/#g')
-		rdpath=$(echo $rpath | sed 's#/tools/protein_tools/scripts/get_fasta_from_pdb.py#/main/database/#g')
-		PATH=$PATH:$rbpath
-	else	
-		echo 'could not find rosetta'
-		exit 0 
+	if [ $(which score_jd2.*.linuxgccrelease | wc -l ) = 0 ] ; then 
+		echo 'Rosetta not located on your path, seaching now . . .'
+		rpath=$(locate get_fasta_from_pdb.py | head -1)
+		if [ $(echo $rpath | wc -l ) = 1 ] ; then 
+			rbpath=$(echo $rpath | sed 's#/tools/protein_tools/scripts/get_fasta_from_pdb.py#/main/source/bin/#g')
+			rdpath=$(echo $rpath | sed 's#/tools/protein_tools/scripts/get_fasta_from_pdb.py#/main/database/#g')
+			PATH=$PATH:$rbpath
+		else	
+			echo 'could not find rosetta'
+			exit 0 
+		fi
 	fi
-fi
 
-# static or default versions?  Dependent on the Rosetta installation, executables can have either 'static' or 'default' in the executable name.
-if [ $( ls $rbpath/score_jd2.static* 2>/dev/null | wc -l ) = 1 ] ; then 
-	version=static
-	echo "using rosetta 'static' build"
-elif [ $( ls $rbpath/score_jd2.default* 2>/dev/null | wc -l ) = 1 ] ; then 
-	version=default 
-	echo "using rosetta 'default' build"
-else
-	echo 'unable to find correct build of rosetta'
-	exit 0
-fi
+	# static or default versions?  Dependent on the Rosetta installation, executables can have either 'static' or 'default' in the executable name.
+	if [ $( ls $rbpath/score_jd2.static* 2>/dev/null | wc -l ) = 1 ] ; then 
+		version=static
+		echo "using rosetta 'static' build"
+	elif [ $( ls $rbpath/score_jd2.default* 2>/dev/null | wc -l ) = 1 ] ; then 
+		version=default 
+		echo "using rosetta 'default' build"
+	else
+		echo 'unable to find correct build of rosetta'
+		exit 0
+	fi
 fi
 
 ########################
@@ -209,10 +212,15 @@ fi
 ########################
 
 # remove underscores from file names and fix stuff
-RIPDB=$(echo $RIPDB | sed 's/_/-/g')  2>/dev/null 
-sed 's/HIE/HIS/g;s/HSD/HIS/g;s/HSE/HIS/g;s/CYX/CYS/g' $RIPDB > temp.tx ; mv temp.tx $RIPDB
-sed -i 's/_/-/g' $MIPDB  2>/dev/null 
-
+if [ $RELAX = True ] ; then
+	RIPDB=$(echo $RIPDB | sed 's/_/-/g')  2>/dev/null 
+elif [ $MUTATE = True ] ; then
+	if [ $(head -1 $MIPDB | rev | cut -c 1-3 | rev ) = pdb ] ; then 
+		sed -i 's/_/-/g' $MIPDB
+	else 
+		MIPDB=$(echo $RIPDB | sed 's/_/-/g')  2>/dev/null 
+	fi
+fi 
 
 # checking for contridictory or badly formatted inputs
 
@@ -307,6 +315,71 @@ if [ $MIRES != False ] && [ $MITHD != False ] ; then
 	echo 'We cannnot have both a res file ('$MIRES') and a theading template file ('$MITHD')'
 	exit = 0 
 fi
+
+# resifixer
+resifix ()
+{
+# protein residues
+sed -i 's/HIE/HIS/g;s/HSD/HIS/g;s/HSE/HIS/g;s/CYX/CYS/g' $1
+# glycan residues
+sed -i 's/0fA/FUC/g;s/0LB/GAL/g;s/0SA/SIA/g;s/2LB/GAL/g;s/3VB/NGA/g;
+		s/4GB/BGC/g;s/WLB/GAL/g;s/WYB/NDG/g' $1
+# glycan atom nomenclaure
+sed -i 's/ C2N/ CN2/g;s/ CME SIA/CAN5 SIA/g;s/ CME/CAN2/g;s/ O2N/OCN2/g;s/ O5N/OCN5/g' $1
+}
+
+# checking for non protein residues
+if [ $RELAX = True ] ; then
+	tester=$RIPDB
+elif [ $MUTATE = True ] ; then
+	if [ $(head -1 $MIPDB | rev | cut -c 1-3 | rev ) = pdb ] ; then 
+		tester=$(head -1 $MIPDB)
+	else 
+		tester=$MIPDB
+	fi
+fi 
+cp $tester test.pdb
+
+grep "ATOM\|HETATM" test.pdb | cut -c 18-20 | sort | uniq | sed '/ALA/d;/CYS/d;/ASP/d;/GLU/d;/PHE/d;
+																/GLY/d;/HIS/d;/ILE/d;/LYS/d;/LEU/d;
+																/MET/d;/ASN/d;/PRO/d;/GLN/d;/ARG/d;
+																/SER/d;/THR/d;/VAL/d;/TRP/d;/TYR/d;
+																/FUC/d;/GAL/d;/SIA/d;/NGA/d;/BGC/d;
+																/NDG/d' > non-familiar.tx
+if [ $( wc -l < non-familiar.tx) != 0 ] ; then 
+echo "Non familiar residues detected! $(cat non-familiar.tx | tr '\n' ' ')"
+echo "attempting fix"
+resifix test.pdb
+
+grep "ATOM\|HETATM" test.pdb | cut -c 18-20 | sort | uniq | sed '/ALA/d;/CYS/d;/ASP/d;/GLU/d;/PHE/d;
+														/GLY/d;/HIS/d;/ILE/d;/LYS/d;/LEU/d;
+														/MET/d;/ASN/d;/PRO/d;/GLN/d;/ARG/d;
+														/SER/d;/THR/d;/VAL/d;/TRP/d;/TYR/d;
+														/FUC/d;/GAL/d;/SIA/d;/NGA/d;/BGC/d;
+														/NDG/d' > non-familiar.tx
+fi
+# are these glycans?
+if [ $(grep "ATOM\|HETATM" test.pdb | cut -c 18-20 | sort | uniq | grep "FUC\|GAL\|SIA\|NGA\|BGC\|NDG\|Gal\|Glc\|Neu" | wc -l ) != 0 ] ; then 
+	glycan=yes
+	echo "Glycans detected!"
+	echo "-include_sugars
+-alternate_3_letter_codes pdb_sugar
+-load_PDB_components false
+-auto_detect_glycan_connections " > glycan.tx
+
+fi 
+
+if [ $( wc -l < non-familiar.tx) != 0 ] ; then 
+echo Unknown residues detected 
+if [ $passunk = yes ] ; then 
+	echo "continuing, unknown residues will be deleted."
+else	
+	echo "unknown residues detected and not fixed! "
+	echo "fix the pdb or activate the passunk option ingnore unknowns"
+	echo "exiting . . . "
+	exit 0
+fi 
+fi 
 
 
 ########################
@@ -496,6 +569,7 @@ echo "
 if [ $RELAX = True ] ; then
 	echo '0.0 Initial Score'
 	if [ $RIPDB != False ] ; then
+		resifix $RIPDB
 		echo '0.1 - Scoring initial pdb'
 		
 		# For local compute
@@ -515,6 +589,7 @@ if [ $RELAX = True ] ; then
 			echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -nstruct 1
 -out:no_nstruct_label
+$(cat $oridir/glycan.tx)
 -score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
 /apps/applications/rosetta/3.10/1/default/main/source/bin/score_jd2.default.linuxgccrelease -in:file:s $RIPDB @flag_"'$SGE_TASK_ID'".file
 " >> remote.tx
@@ -568,6 +643,7 @@ elif [ $MUTATE = True ] ; then 	 # <-- This has been disabled as probably not wa
 				echo '
 				for j in $(seq '$i' '$CPU' $(wc -l < '$MIPDB') ) ; do
 				pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$MIPDB')
+				resifix $pdb
 				cp $oridir/$pdb .
 				nohup score_jd2.'$version'.linuxgccrelease -in:file:s $pdb @sflag.file  2>/dev/null 
 				done' > run-cpu$i
@@ -591,11 +667,12 @@ elif [ $MUTATE = True ] ; then 	 # <-- This has been disabled as probably not wa
 			date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
 			cp ../remote.tx .
 			ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoScore
-			
+			resifix $i
 			scp $PROXY $oridir/$i $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
 			echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -nstruct 1
 -out:no_nstruct_label
+$(cat $oridir/glycan.tx)
 -score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
 /apps/applications/rosetta/3.10/1/default/main/source/bin/score_jd2.default.linuxgccrelease -in:file:s $i @flag_"'$SGE_TASK_ID'".file
 	" >> remote.tx
@@ -683,6 +760,7 @@ if [ $RELAX = True ] ; then
 			echo "
 -out:path:all $oridir/rosetta-1-relax/temp$i
 -relax:fast
+$(cat $oridir/glycan.tx)
 -database /usr/local/rosetta/main/database
 -nstruct $(( $RINST / $CPU ))
 -score:weights ref2015" > rflag$i.file
@@ -695,6 +773,7 @@ if [ $RELAX = True ] ; then
 			echo '
 for j in $(seq '$i' '$CPU' $(wc -l < '$RIPDBL') ) ; do
 pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$RIPDBL')
+resifix $pdb
 nohup relax.'$version'.linuxgccrelease -in:file:s $pdb @rflag'$i'.file  2>/dev/null 
 done' > run-cpu$i
 			chmod 755 run-cpu$i
@@ -755,13 +834,14 @@ done' > run-cpu$i
 		date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
 		cp ../remote.tx .
 		ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoRelax
-		
+		resifix $RIPDB
 		scp $PROXY $oridir/$RIPDB $USER@$COMPUTE:$remotedir/$date-RosettaAutoRelax/. 1>/dev/null
 		echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -out:suffix _"'$SGE_TASK_ID'"
 -relax:fast
 -out:suffix _"'$state'"
 -out:file:scorefile score.sc
+$(cat $oridir/glycan.tx)
 -nstruct 1
 -no_nstruct_label
 -score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
@@ -854,7 +934,9 @@ start' > mires-auto.tx
 		
 ####### generate movable selection - using pymol
 		respdb=$(head -1 mipdb-auto.tx)
-		cp $oridir/rosetta-1-relax/$respdb $oridir/$respdb
+		if [ $RELAX = True ] ; then 
+			cp $oridir/rosetta-1-relax/$respdb $oridir/$respdb
+		fi
 		echo "load $oridir/$respdb" > mires.pml
 		sed '/^[[:space:]]*$/d' $oridir/mires.tx | sed "s/ /+/g;s/./ \& i. /2;s/^/+ c. /g" | tr '\n' ' ' | sed "s/^+ /select muts, /g
 " >> mires.pml
@@ -1003,6 +1085,7 @@ save combined.pdb, combined" >> mires.pml
 -out:suffix _$MIRESname
 -out:file:scorefile score.sc
 -relax:fast
+$(cat $oridir/glycan.tx)
 -database /usr/local/rosetta/main/database
 -nstruct $(( $MONST / $CPU ))
 -in:file:movemap move.map
@@ -1013,6 +1096,7 @@ save combined.pdb, combined" >> mires.pml
 				echo '
 				for j in $(seq '$i' '$CPU' $(wc -l < '$MIPDBL') ) ; do
 				pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$MIPDBL')
+				resifix $pdb
 				nohup relax.'$version'.linuxgccrelease -in:file:s $pdb @mflag'$i'.file 2>/dev/null 
 				done' > run-cpu$i
 				chmod 755 run-cpu$i
@@ -1101,7 +1185,7 @@ save combined.pdb, combined" >> mires.pml
 			date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
 			cp ../remote.tx .
 			ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoMutate
-			
+			resifix $i
 			scp $PROXY $oridir/rosetta-2-mutate/$i $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/. 1>/dev/null
 			scp $PROXY $oridir/rosetta-2-mutate/move.map $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/. 1>/dev/null
 			scp $PROXY $oridir/rosetta-2-mutate/mires-auto-mutate.tx $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/res.file 1>/dev/null
@@ -1109,6 +1193,7 @@ save combined.pdb, combined" >> mires.pml
 -relax:fast
 -out:suffix _"'$state'"
 -out:file:scorefile score.sc
+$(cat $oridir/glycan.tx)
 -nstruct 1
 -no_nstruct_label
 -in:file:movemap move.map
@@ -1198,6 +1283,7 @@ if [ $INTER = True ] ; then
 -database /usr/local/rosetta/main/database
 -fixedchains $IIFAC
 -score:weights ref2015
+$(cat $oridir/glycan.tx)
 -compute_packstat true
 -tracer_data_print false #make a score file with all the important info instead of just printing to the terminal
 -out:file:score_only inter_score.sc #This will cause output of all of the info to a file called inter_score.sc
@@ -1243,6 +1329,7 @@ done' > run-cpu$i
 -database /usr/local/rosetta/main/database
 -fixedchains $IIFAC
 -score:weights ref2015
+$(cat $oridir/glycan.tx)
 -compute_packstat true
 -tracer_data_print false #make a score file with all the important info instead of just printing to the terminal
 -out:file:score_only inter_score.sc #This will cause output of all of the info to a file called inter_score.sc
@@ -1279,6 +1366,7 @@ done' > run-cpu$i
 -in:file:s "'$(sed -n ""$SGE_TASK_ID"p"'" pdb.list)
 -fixedchains $IIFAC
 -score:weights ref2015
+$(cat $oridir/glycan.tx)
 -compute_packstat true
 -tracer_data_print false #make a score file with all the important info instead of just printing to the terminal
 -out:file:score_only inter_score.sc #This will cause output of all of the info to a file called inter_score.sc
@@ -1371,6 +1459,7 @@ if [ $cenperes = True ] ; then
 			echo "#specific options for per-res
 -database /usr/local/rosetta/main/database
 -score:weights ref2015
+$(cat $oridir/glycan.tx)
 -out:file:score_only perres_score.sc" > rflag$i.file
 
 			#make a rosetta executable per cpu and run them
