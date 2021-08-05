@@ -42,7 +42,7 @@
 # INPUT OPTIONS
 # Option                    # Expected              # Comments
 
-COMPUTE=arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
+COMPUTE=LOCAL #arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
                           # if not local, it is assumed to be an arc cluster at the univerity of leeds, or another SGE cluster
                             # if not local, it is assumed you have already passed you ssh $PROXY id to the remote machine
 HOURS=04:00:00              # HH:MM:SS for arc run  # this must exceed the maximum time, please wildly overestimate.
@@ -51,7 +51,7 @@ EMAIL=chmjro@leeds.ac.uk     # email address         # your email address
 remotedir=/nobackup/chmjro   # path                  # home directory on remote machine
 PROXYJUMP=chmjro@remote-access.leeds.ac.uk           # FALSE or proxy jump user and address [user]@remote-access.leeds.ac.uk
 
-CPU=2                      # Integer               # Number of CPUs to use  (make sure RINST and MONST are equal or greater than CPUs)
+CPU=10                      # Integer               # Number of CPUs to use  (make sure RINST and MONST are equal or greater than CPUs)
                             # only for local, HPC uses a defualt of 100, though 50 are usually given
 
 ########################
@@ -60,14 +60,14 @@ CPU=2                      # Integer               # Number of CPUs to use  (mak
 # It is highly recommended that structures are relaxed prior to any analysis with rosetta
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
-RELAX=False                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
+RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
 RIPDB=1coi.pdb              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
-RIRMM=FALSE              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
-RINST=2                    # Integer               # How many relaxations? : The number relaxations to make
+RIRMM=False              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
+RINST=10                    # Integer               # How many relaxations? : The number relaxations to make
 RONSS=1                     # Integer               # How many results to carry through? : The number of best relaxations to carry through to the next stage 
                                                     # Typically do not exceed 10% of the total relaxations if making mutations
 ROMET=True                # True False            # Produce output metrics and graphs for the relaxations. 		!!!!! INCOMPLETE !!!!!
-ROPRS=True                 # True False            # Energy breakdown per residue output. - THIS PRODUCES A HUGE FILE!
+ROPRS=False                 # True False            # Energy breakdown per residue output. - THIS PRODUCES A HUGE FILE!
 
 
 ########################
@@ -75,7 +75,7 @@ ROPRS=True                 # True False            # Energy breakdown per residu
 ########################
 # Mutagenesis of the protein structure using rosetta fast relax and design.
 MUTATE=True                 # True False            # Mutate structure : Use rosetta fast relax and design, creates output folder 'rosetta-2-mutate'
-MIPDB=pdb.list               # Filename False        # Input filelist : file with list of input pdbs, can contain a single pdb, 
+MIPDB=False               # Filename False        # Input filelist : file with list of input pdbs, can contain a single pdb, 
                             #                         only use if no relaxation, otherwise "RONSS" determines input list.
                             #		                  i.e. 'False' is the default which takes inputs from the relaxation.
 MIRES=False                 # Filename False        # Res file input : Provide a rosetta res file with mutation options
@@ -98,7 +98,7 @@ MOPRS=False                 # True False            # Energy breakdown per resid
 # One chain per line, with residue positions, as below
 rm mires.tx 2>/dev/null 
 echo "
-A 11 12 13 14 15 16 17 18 19
+A 11 12 15 16 19 20
 " > mires.tx
 # PICK MUTATION TYPE (see here https://www.rosettacommons.org/docs/latest/rosetta_basics/file_types/resfiles)
 PICKACID=ALLAAxc            # ALLAAxc (all amino acid, not cys) or POLAR (DEHKNQRST) or APOLAR (ACFGILMPVWY)
@@ -121,7 +121,7 @@ subjump=YES                 # YES or NO             # can subunits rigid-body mo
 #      INTERFACE       #
 ########################
 # Analysis of the protein interface between chains.
-INTER=False                  # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
+INTER=True                  # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
 IIFAC="A"                   # chain_names           # qoute chains of single group, if analaysing the interface between chain groups A and B vs C and D then use "A B"
 IOSQE=True                  # True False            # For each of the analysed structures output, name - sequence - total energy - interface energy
 IOMET=True                 # True False            # Produce output metrics and graphs for the Interface Energy.			!!!!! INCOMPLETE !!!!!
@@ -131,7 +131,7 @@ IOPRS=True                  # True False            # Energy breakdown per resid
 #       CLUSTER        #
 ########################
 # Sequence clustering and energy analysis.
-action=False              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
+action=sequence              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
                             # if sequence, will use the mutant sequence.
                             # if rmsd will use the whole protein or a selected range below			
 # select a residue range for the rmsd
@@ -146,13 +146,13 @@ ndigits=5
 ########################################################################################################################################################################
 
 # allow temporary file preservation
-DEBUG=True                  # True False            # If True, then intermediate files are not cleaned up!
+DEBUG=True			# True False    # If True, then intermediate files are not cleaned up!
 
 # find the current working directory
 oridir=$(pwd)
 
 # force passed unknown reidues
-passunk=yes				# yes no					# if yes, unknown residues will be deleted or cause error
+passunk=no			# yes no	# if yes, unknown residues will be deleted or cause error
 
 ########################
 # PROGRAM DEPENDENCIES #
@@ -737,8 +737,7 @@ if [ $RELAX = True ] ; then
 	if [ $COMPUTE = LOCAL ] ; then 
 	################################################	
 	########################  CPU CONTROL
-		echo '1.1 - Running local relaxations'
-		
+			
 		# duplicate input files for each CPU
 		rm ripdb.tx 2>/dev/null 
 		for i in $(seq 1 $CPU) ; do 
@@ -748,6 +747,14 @@ if [ $RELAX = True ] ; then
 		cp $oridir/$RIPDB .
 		RIPDBL=ripdb.tx
 
+
+		# perform residue fix on pdbs
+		echo "1.0a	fixing residue nomenclature"
+		for i in $(cat $RIPDBL | sort | uniq) ; do 
+			resifix $i 
+		done
+
+		echo '1.1 - Running local relaxations'
 	################################################	
 	########################  RUN RELAXATION
 		
@@ -760,7 +767,7 @@ if [ $RELAX = True ] ; then
 			echo "
 -out:path:all $oridir/rosetta-1-relax/temp$i
 -relax:fast
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -database /usr/local/rosetta/main/database
 -nstruct $(( $RINST / $CPU ))
 -score:weights ref2015" > rflag$i.file
@@ -773,7 +780,6 @@ $(cat $oridir/glycan.tx)
 			echo '
 for j in $(seq '$i' '$CPU' $(wc -l < '$RIPDBL') ) ; do
 pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$RIPDBL')
-resifix $pdb
 nohup relax.'$version'.linuxgccrelease -in:file:s $pdb @rflag'$i'.file  2>/dev/null 
 done' > run-cpu$i
 			chmod 755 run-cpu$i
@@ -841,7 +847,7 @@ done' > run-cpu$i
 -relax:fast
 -out:suffix _"'$state'"
 -out:file:scorefile score.sc
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -nstruct 1
 -no_nstruct_label
 -score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
@@ -1067,7 +1073,9 @@ save combined.pdb, combined" >> mires.pml
 		MIPDBL=mipdb-auto.tx
 		sort mipdb-auto.tx | uniq > $oridir/mipdb-auto.tx
 		
-
+		for i in $(cat $MIPDBL ) ; do 
+			resifix $i
+		done
 	################################################	
 	########################  RUN MUTATION
 		# process the input list for the number of CPUs
@@ -1085,7 +1093,7 @@ save combined.pdb, combined" >> mires.pml
 -out:suffix _$MIRESname
 -out:file:scorefile score.sc
 -relax:fast
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -database /usr/local/rosetta/main/database
 -nstruct $(( $MONST / $CPU ))
 -in:file:movemap move.map
@@ -1096,7 +1104,7 @@ $(cat $oridir/glycan.tx)
 				echo '
 				for j in $(seq '$i' '$CPU' $(wc -l < '$MIPDBL') ) ; do
 				pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$MIPDBL')
-				resifix $pdb
+
 				nohup relax.'$version'.linuxgccrelease -in:file:s $pdb @mflag'$i'.file 2>/dev/null 
 				done' > run-cpu$i
 				chmod 755 run-cpu$i
@@ -1132,7 +1140,7 @@ $(cat $oridir/glycan.tx)
 			rm *.pdb
 			for i in $(seq 1 $CPU) ; do
 				#count files in destination directory
-				pdbcount=$(ls *.pdb | wc -l ) 2>/dev/null 
+				pdbcount=$(ls *.pdb 2>/dev/null | wc -l ) 
 				if [ $i = 1 ] ; then 
 					#move the header of the score file to the destination directory
 					head -2 $oridir/rosetta-2-mutate/temp1/score.sc > $oridir/rosetta-2-mutate/score.sc
@@ -1193,7 +1201,7 @@ $(cat $oridir/glycan.tx)
 -relax:fast
 -out:suffix _"'$state'"
 -out:file:scorefile score.sc
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null )
 -nstruct 1
 -no_nstruct_label
 -in:file:movemap move.map
@@ -1264,7 +1272,7 @@ if [ $INTER = True ] ; then
 	
 	# for local compute
 	if [ $COMPUTE = LOCAL ] ; then 
-		#cp $oridir/rosetta-1-relax/*.pdb .
+		cp $oridir/rosetta-1-relax/*.pdb .
 		cp $oridir/rosetta-2-mutate/*.pdb .
 		ls -v *.pdb > pdb.list
 
@@ -1283,7 +1291,7 @@ if [ $INTER = True ] ; then
 -database /usr/local/rosetta/main/database
 -fixedchains $IIFAC
 -score:weights ref2015
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -compute_packstat true
 -tracer_data_print false #make a score file with all the important info instead of just printing to the terminal
 -out:file:score_only inter_score.sc #This will cause output of all of the info to a file called inter_score.sc
@@ -1329,7 +1337,7 @@ done' > run-cpu$i
 -database /usr/local/rosetta/main/database
 -fixedchains $IIFAC
 -score:weights ref2015
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -compute_packstat true
 -tracer_data_print false #make a score file with all the important info instead of just printing to the terminal
 -out:file:score_only inter_score.sc #This will cause output of all of the info to a file called inter_score.sc
@@ -1353,6 +1361,7 @@ $(cat $oridir/glycan.tx)
 	if [ $COMPUTE != LOCAL ] ; then 
 		echo "3.1 - Running remote interface analysis"
 		date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
+		cp $oridir/rosetta-1-relax/*.pdb .
 		cp $oridir/rosetta-2-mutate/*.pdb .
 		ls -v *.pdb > pdb.list
 		cp ../remote.tx .
@@ -1366,7 +1375,7 @@ $(cat $oridir/glycan.tx)
 -in:file:s "'$(sed -n ""$SGE_TASK_ID"p"'" pdb.list)
 -fixedchains $IIFAC
 -score:weights ref2015
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -compute_packstat true
 -tracer_data_print false #make a score file with all the important info instead of just printing to the terminal
 -out:file:score_only inter_score.sc #This will cause output of all of the info to a file called inter_score.sc
@@ -1459,7 +1468,7 @@ if [ $cenperes = True ] ; then
 			echo "#specific options for per-res
 -database /usr/local/rosetta/main/database
 -score:weights ref2015
-$(cat $oridir/glycan.tx)
+$(cat $oridir/glycan.tx 2>/dev/null)
 -out:file:score_only perres_score.sc" > rflag$i.file
 
 			#make a rosetta executable per cpu and run them
@@ -1533,7 +1542,7 @@ cat default.out >> perres.out ; rm default.out
 	cd $oridir/rosetta-4-analysis ; rm -r temp*
 fi
 
-echo 'collating sequence and energy data'
+echo '4.2 - collating sequence and energy data'
 ################################################	
 ########################  Generate total fasta sequence files. 
 if [ $MOSEQ = True ] || [ $MOMSQ = True ] ; then 
@@ -1721,7 +1730,7 @@ fi
 
 echo 5.0 Clustering
 if [ $action = rmsd ] ; then
-	rmsd=no							 			# yes	<--- needs fixing for rmsd matrix
+	rmsd=no						# yes	<--- needs fixing for rmsd matrix
 	sequence=no							 		
 	matrix="rmsd"
 elif [ $action = sequence ] ; then 
@@ -1729,7 +1738,7 @@ elif [ $action = sequence ] ; then
 	sequence=yes
 	matrix="sequence"
 elif [ $action = both ] ; then 
-	rmsd=no							 			# yes	<--- needs fixing for rmsd matrix
+	rmsd=no						# yes	<--- needs fixing for rmsd matrix
 	sequence=yes
 	matrix="rmsd sequence"
 elif [ $action = False ] ; then 
@@ -1740,18 +1749,20 @@ if [ $action != False ] ; then
 	rm -r $oridir/rosetta-5-cluster 2>/dev/null 
 	mkdir $oridir/rosetta-5-cluster
 	cd  $oridir/rosetta-5-cluster
-fi 
 
-#cp $oridir/rosetta-3-inter/$pdb*.pdb .								 		#	<--- needs fixing for rmsd matrix
-#for i in $(cat $oridir/mipdb-auto.tx) ; do  
-#	cp $oridir/rosetta-1-relax/$i .
-#done
-#ls -v *.pdb > pdb.list
 cp $oridir/rosetta-4-analysis/mutate-output.csv .
 cp $oridir/rosetta-4-analysis/rosetta-spec-sequence.fa .
 
+# define energy col if mutate 
+if [ $MUTATE = True ] ; then 
+energycol=total-REU
+fi
 
-if [ $rmsd = yes ] ; then 
+# define energy col if inter
+if [ $INTER = True ] ; then 
+energycol=Interface-REU
+fi 
+
 ###########################
 ## GENERATE RMSD SIMILARITY MATRIX
 if [ $rmsd = yes ] ; then 
@@ -1759,20 +1770,10 @@ if [ $rmsd = yes ] ; then
 	if [ $(wc -l < pdb.list) -gt 2000 ] ; then 
 		echo "too many pdbs for rms matrix!"
 		rmsd=no
+	else
+		rmsmatrix 1>/dev/null 
+		mv matrix.csv rmsd-matrix.csv
 	fi 
-fi 
-if [ $rmsd = yes ] ; then
-	firmsmatrix 1>/dev/null 
-	mv matrix.csv rmsd-matrix.csv
-fi
-fi
-
-# 
-if [ $MUTATE = True ] ; then 
-energycol=total-REU
-fi
-if [ $INTER = True ] ; then 
-energycol=Interface-REU
 fi 
 
 ###########################
@@ -1902,11 +1903,12 @@ sns_heat = sns.heatmap(np.array(matrix))
 figure = sns_heat.get_figure()
 figure.savefig('heat-average.png', dpi=800)
 " > mc.py
-python mc.py
+python mc.py 2>/dev/null
 fi
 
-done
-done
+fi
+
+
 
 ########################################################################################################################################################################
 #    Clean up    #
@@ -1914,5 +1916,4 @@ done
 
 
 echo '5.0 Complete!'
-#mv score.sc rosetta-0-initial/.
-#rm run-cpu* *.tx nohup.out *flag[0-9]* pdb.list cluster.py 2>/dev/null 
+
