@@ -131,7 +131,7 @@ IOPRS=True                  # True False            # Energy breakdown per resid
 #       CLUSTER        #
 ########################
 # Sequence clustering and energy analysis.
-action=sequence              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
+action=both              # either 'rmsd' or 'sequence' or 'both' or 'False'    !!!!!  RMSD MATRIX IS CURRENTLY DISABLED   !!!!!!!
                             # if sequence, will use the mutant sequence.
                             # if rmsd will use the whole protein or a selected range below			
 # select a residue range for the rmsd
@@ -146,7 +146,7 @@ ndigits=5
 ########################################################################################################################################################################
 
 # allow temporary file preservation
-DEBUG=True			# True False    # If True, then intermediate files are not cleaned up!
+DEBUG=False			# True False    # If True, then intermediate files are not cleaned up!
 
 # find the current working directory
 oridir=$(pwd)
@@ -840,7 +840,7 @@ done' > run-cpu$i
 		date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
 		cp ../remote.tx .
 		ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoRelax
-		resifix $RIPDB
+		resifix $oridir/$RIPDB
 		scp $PROXY $oridir/$RIPDB $USER@$COMPUTE:$remotedir/$date-RosettaAutoRelax/. 1>/dev/null
 		echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -out:suffix _"'$SGE_TASK_ID'"
@@ -956,7 +956,7 @@ save combined.pdb, combined" >> mires.pml
 		wait
 		cat shell.pdb | grep ' CA ' | awk '{print $6,$5}' | sed 's/$/ NATAA/g' >> mires-auto.tx
 		rm shell.pdb
-		cp mires-auto.tx mires-auto-mutate.tx
+		cp mires-auto.tx mires-auto-mutate.txt
 		MIRES=mires-auto.tx
 ####### generate movemap
 		echo 'RESIDUE * NO' > move.map
@@ -1176,8 +1176,8 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 		for i in $(cat $MIPDBL 2>/dev/null ) ; do 
 			rm $i 2>/dev/null 
 		done
-		ls *.pdb > mopdblist.tx  2>/dev/null 
-		MOPDBL=mopdblist.tx
+		ls *.pdb > mopdblist.txt  2>/dev/null 
+		MOPDBL=mopdblist.txt
 		mv mires-auto.txt  mires-auto.tx
 		
 		# mipdb location correction
@@ -1196,7 +1196,7 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 			resifix $i
 			scp $PROXY $oridir/rosetta-2-mutate/$i $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/. 1>/dev/null
 			scp $PROXY $oridir/rosetta-2-mutate/move.map $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/. 1>/dev/null
-			scp $PROXY $oridir/rosetta-2-mutate/mires-auto-mutate.tx $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/res.file 1>/dev/null
+			scp $PROXY $oridir/rosetta-2-mutate/mires-auto-mutate.txt $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/res.file 1>/dev/null
 			echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -relax:fast
 -out:suffix _"'$state'"
@@ -1243,15 +1243,15 @@ $(cat $oridir/glycan.tx 2>/dev/null )
 		echo ''
 		done
 		rm combined.pdb
-		ls *.pdb > mopdblist.tx  2>/dev/null 
-		MOPDBL=mopdblist.tx
+		ls *.pdb > mopdblist.txt  2>/dev/null 
+		MOPDBL=mopdblist.txt
 		cp mires-auto.tx  mires-auto.txt
 		cp mipdb-auto.tx $oridir/.
 		
 
 	fi
 	if [ $DEBUG != True ] ; then
-		rm -r temp* mflag* run-* nohup-out 2>/dev/null 
+		rm -r temp* mflag* run-* nohup-out *.tx 2>/dev/null 
 	fi
 	
 
@@ -1415,7 +1415,7 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 		echo ''
 	fi
 	if [ $DEBUG != True ] ; then
-		rm -r temp* iflag* run-* nohup-out 2>/dev/null 
+		rm -r temp* iflag* run-* nohup-out *.tx 2>/dev/null 
 	fi
 	
 
@@ -1584,7 +1584,7 @@ fi
 if [ $MOMSQ = True ] && [ $MITHD = False ] ; then 
 	#echo 'RIPDB = '$RIPDB
 	#echo 'spec chain initial'
-	rm seqgen.fa specseqpdb.tx 2>/dev/null 
+	rm seqgen.fa specseqpdb.txt 2>/dev/null 
 	cat $oridir/rosetta-2-mutate/$MIRES | sed '1,2d' | grep -v 'NATAA$' | grep -v 'NATRO' > specseqgen.tx
 	
 	for i in $(seq 1 $(wc -l < specseqgen.tx) ) ; do 
@@ -1592,10 +1592,10 @@ if [ $MOMSQ = True ] && [ $MITHD = False ] ; then
 		specseqpos=$(echo "---$(sed -n ''$i'p' specseqgen.tx | awk '{print $1}')" | rev | cut -c 1-4 | rev)
 		specseqcha=$(sed -n ''$i'p' specseqgen.tx | awk '{print $2}')
 		specseqpch=$(echo $specseqcha$specseqpos | sed 's/-/ /g')
-		grep ' CA ' $oridir/$RIPDB | grep "$specseqpch" >> specseqpdb.tx
+		grep ' CA ' $oridir/$RIPDB | grep "$specseqpch" >> specseqpdb.txt
 	done
 	name=$(echo $RIPDB | sed 's/.pdb//g' )
-	mv specseqpdb.tx $name
+	mv specseqpdb.txt $name
 	#echo 'name ='$name 'chain ='$specseqcha
 	seqgen $name $specseqcha
 	rm $name
@@ -1607,27 +1607,27 @@ if [ $MOMSQ = True ] && [ $MITHD = False ] ; then
 			specseqpos=$(echo "---$(sed -n ''$i'p' specseqgen.tx | awk '{print $1}')" | rev | cut -c 1-4 | rev)
 			specseqcha=$(sed -n ''$i'p' specseqgen.tx | awk '{print $2}')
 			specseqpch=$(echo $specseqcha$specseqpos | sed 's/-/ /g')
-			grep ' CA ' $oridir/rosetta-2-mutate/$j | grep "$specseqpch" >> specseqpdb.tx
+			grep ' CA ' $oridir/rosetta-2-mutate/$j | grep "$specseqpch" >> specseqpdb.txt
 		done
 		name=$(echo $j | sed 's/\// /g' | rev | cut -d' ' -f 1 | rev | sed 's/.pdb//g' )
-		mv specseqpdb.tx $name
+		mv specseqpdb.txt $name
 		seqgen $name $specseqcha
 		rm $name
 	done
 	mv seqgen.fa rosetta-spec-sequence.fa
 fi
 if [ $MOMSQ = True ] && [ $MITHD != False ] ; then 
-	rm seqgen.fa specseqpdb.tx 2>/dev/null 
+	rm seqgen.fa specseqpdb.txt 2>/dev/null 
 	specseqcha=$(cut -c 1 $oridir/mires.tx | sed -n '2p')
 	cut -c 3- $oridir/mires.tx | sed -n '2p'| tr ' ' '\n' | sed '$d' > mires-col.tx 
 	for i in $(cat mires-col.tx ) ; do 
 		#sed -n ''$i'p' specseqgen.tx
 		specseqpos=$(echo "---$i" | rev | cut -c 1-4 | rev)
 		specseqpch=$(echo $specseqcha$specseqpos | sed 's/-/ /g')
-		grep ' CA ' $oridir/$RIPDB | grep "$specseqpch" >> specseqpdb.tx
+		grep ' CA ' $oridir/$RIPDB | grep "$specseqpch" >> specseqpdb.txt
 	done
 	name=$(echo $RIPDB | sed 's/.pdb//g' )
-	mv specseqpdb.tx $name
+	mv specseqpdb.txt $name
 	#echo 'name ='$name 'chain ='$specseqcha
 	seqgen $name $specseqcha
 	rm $name
@@ -1639,10 +1639,10 @@ if [ $MOMSQ = True ] && [ $MITHD != False ] ; then
 			#sed -n ''$i'p' specseqgen.tx
 			specseqpos=$(echo "---$i" | rev | cut -c 1-4 | rev)
 			specseqpch=$(echo $specseqcha$specseqpos | sed 's/-/ /g')
-			grep ' CA ' $oridir/rosetta-2-mutate/$j | grep "$specseqpch" >> specseqpdb.tx
+			grep ' CA ' $oridir/rosetta-2-mutate/$j | grep "$specseqpch" >> specseqpdb.txt
 		done
 		name=$(echo $j | sed 's/\// /g' | rev | cut -d' ' -f 1 | rev | sed 's/.pdb//g' )
-		mv specseqpdb.tx $name
+		mv specseqpdb.txt $name
 		seqgen $name $specseqcha
 		rm $name
 	done
@@ -1717,9 +1717,10 @@ if [ $MUTATE = True ] ; then
 	done
 	sort -t',' -k1,1 mutate-output.csv > temp
 	cat mutate-outputh.csv temp > mutate-output.csv
+	
 fi
 if [ $DEBUG != True ] ; then
-	rm *.tx
+	rm *.tx mutate-outputh.csv temp pdb.list 
 fi
 
 ########################################################################################################################################################################
@@ -1730,7 +1731,7 @@ fi
 
 echo 5.0 Clustering
 if [ $action = rmsd ] ; then
-	rmsd=no						# yes	<--- needs fixing for rmsd matrix
+	rmsd=yes					# yes	<--- needs fixing for rmsd matrix
 	sequence=no							 		
 	matrix="rmsd"
 elif [ $action = sequence ] ; then 
@@ -1738,7 +1739,7 @@ elif [ $action = sequence ] ; then
 	sequence=yes
 	matrix="sequence"
 elif [ $action = both ] ; then 
-	rmsd=no						# yes	<--- needs fixing for rmsd matrix
+	rmsd=yes					# yes	<--- needs fixing for rmsd matrix
 	sequence=yes
 	matrix="rmsd sequence"
 elif [ $action = False ] ; then 
@@ -1766,6 +1767,11 @@ fi
 ###########################
 ## GENERATE RMSD SIMILARITY MATRIX
 if [ $rmsd = yes ] ; then 
+	echo "		generating RMSD matrix"
+	for i in $(awk -F',' '{print $1}' mutate-output.csv | sed '/name/d;s/$/.pdb/g') ; do 
+		cp $oridir/rosetta-4-analysis/pdb/$i .
+	done
+
 	ls -v *.pdb > pdb.list
 	if [ $(wc -l < pdb.list) -gt 2000 ] ; then 
 		echo "too many pdbs for rms matrix!"
@@ -1773,12 +1779,118 @@ if [ $rmsd = yes ] ; then
 	else
 		rmsmatrix 1>/dev/null 
 		mv matrix.csv rmsd-matrix.csv
-	fi 
+		rm *.pdb
+		echo ', score' > inter-score-only.sc
+		sed 's/,/ /g' mutate-output.csv | transpose | grep "name\|$energycol" | transpose | sed 's/ /,/g' |  grep -v name >> inter-score-only.sc
+
+echo "
+
+import numpy as np
+import pandas as pd
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics.pairwise import euclidean_distances
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.spatial import distance
+from scipy.cluster import hierarchy
+
+distances = pd.read_csv('rmsd-matrix.csv',index_col=0).to_numpy()
+#print(distances)
+#print(distances.shape)
+
+df = pd.read_csv('inter-score-only.sc',index_col=0)
+#print(df)
+#print(df.shape)
+
+plt.figure(figsize = (12,10))
+sns_heat = sns.heatmap(distances)
+figure = sns_heat.get_figure()
+figure.savefig('rms-heat-native.png', dpi=800)
+plt.clf()
+
+row_linkage = hierarchy.linkage(distances, method='average')
+
+cutree = [1, 3, 9, 27, 81, 243, 729]
+my_array = []
+for i in cutree :
+    clusters = hierarchy.fcluster(row_linkage, i, 'maxclust')
+    my_array.append(clusters)
+
+
+my_array = np.array(my_array)
+
+# Get sorted indices
+sorted_indices = my_array[-1,:].argsort()
+
+# Index distances with sorted indices
+distances = distances[sorted_indices]
+
+# Transpose and sort again 
+distances = distances.T[sorted_indices]
+
+
+np.savetxt('rms-heat-clusters.csv', distances , delimiter=',',  fmt='%s')
+
+plt.figure(figsize = (12,10))
+sns_heat = sns.heatmap(distances)
+figure = sns_heat.get_figure()
+figure.savefig('rms-heat-cluster.png', dpi=800) 
+
+#print(my_array)
+
+for i, n in enumerate(cutree):
+    
+    df[f'n{n}'] = my_array[i,:]
+    df[f'e{n}'] = 0
+    
+    for j in range(1, n+1):
+        #print(df)
+        mean = df[df.columns[0]].loc[df[f'n{n}'] == j].mean()
+        df[f'e{n}'].loc[df[f'n{n}'] == j] = mean
+
+df.to_csv('rms-cluster-info.csv', float_format='%.2f')
+
+df['mean_energy'] = 0
+
+cluster_columns = [f'n{n}' for n in cutree]
+energy_columns = [f'e{n}' for n in cutree]
+
+cluster_columns = df[cluster_columns].to_numpy()
+energy_columns = df[energy_columns].to_numpy()
+ 
+
+matrix = []
+for i, x in enumerate(cluster_columns):
+    matrix_row = []
+    for j, y in enumerate(cluster_columns):
+        matrix_row.append(energy_columns[i, np.where(x == y)[0][-1]])
+    matrix.append(matrix_row)
+
+matrix = np.array(matrix)
+
+# Index distances with sorted indices
+matrix = matrix[sorted_indices]
+
+# Transpose and sort again 
+matrix = matrix.T[sorted_indices]
+
+
+plt.figure(figsize = (12,10))
+sns_heat = sns.heatmap(np.array(matrix))
+figure = sns_heat.get_figure()
+figure.savefig('rms-heat-average.png', dpi=800)
+print("Success")
+
+" > mc.py
+python mc.py 2>/dev/null
+
+fi
 fi 
 
 ###########################
 ## GENERATE SEQUENCE SIMILARITY MATRIX AND ENERGY OVERLAY
 if [ $sequence = yes ] ; then	
+echo "		generating sequence matrix"
 echo "
 import numpy as np
 import pandas as pd
@@ -1830,7 +1942,7 @@ distances = euclidean_distances(X, X)
 plt.figure(figsize = (12,10))
 sns_heat = sns.heatmap(distances)
 figure = sns_heat.get_figure()
-figure.savefig('heat-native.png', dpi=800)
+figure.savefig('seq-heat-native.png', dpi=800)
 plt.clf()
 
 row_linkage = hierarchy.linkage(distances, method='average')
@@ -1854,12 +1966,12 @@ distances = distances[sorted_indices]
 distances = distances.T[sorted_indices]
 
 
-np.savetxt('heat-clusters.csv', distances , delimiter=',',  fmt='%s')
+np.savetxt('seq-heat-clusters.csv', distances , delimiter=',',  fmt='%s')
 
 plt.figure(figsize = (12,10))
 sns_heat = sns.heatmap(distances)
 figure = sns_heat.get_figure()
-figure.savefig('heat-cluster.png', dpi=800) 
+figure.savefig('seq-heat-cluster.png', dpi=800) 
 
 #print(my_array)
 
@@ -1881,6 +1993,7 @@ energy_columns = [f'e{n}' for n in cutree]
 cluster_columns = df[cluster_columns].to_numpy()
 energy_columns = df[energy_columns].to_numpy()
  
+np.savetxt('naensegr.tx', df , delimiter=',',  fmt='%s')
 
 matrix = []
 for i, x in enumerate(cluster_columns):
@@ -1901,9 +2014,25 @@ matrix = matrix.T[sorted_indices]
 plt.figure(figsize = (12,10))
 sns_heat = sns.heatmap(np.array(matrix))
 figure = sns_heat.get_figure()
-figure.savefig('heat-average.png', dpi=800)
+figure.savefig('seq-heat-average.png', dpi=800)
 " > mc.py
 python mc.py 2>/dev/null
+
+awk 'BEGIN{OFS=FS=","}
+NR>0 {
+  $2=sprintf("%.2f",$2) 
+  $3=sprintf("%.2f",$3)
+  $4=sprintf("%.2f",$4)  
+  $5=sprintf("%.2f",$5) 
+  $8=sprintf("%.2f",$8)
+  $10=sprintf("%.2f",$10) 
+  $12=sprintf("%.2f",$12)
+  $14=sprintf("%.2f",$14) 
+  $16=sprintf("%.2f",$16)
+  $18=sprintf("%.2f",$18) 
+  $20=sprintf("%.2f",$20) }1' naensegr.tx > seq-cluster-info.csv
+
+
 fi
 
 fi
@@ -1915,5 +2044,5 @@ fi
 ########################################################################################################################################################################
 
 
-echo '5.0 Complete!'
+echo '6.0 Complete!'
 
