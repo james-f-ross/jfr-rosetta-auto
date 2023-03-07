@@ -42,14 +42,14 @@
 # INPUT OPTIONS
 # Option                    # Expected              # Comments
 
-COMPUTE=LOCAL #arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
+COMPUTE=arc4.leeds.ac.uk    # LOCAL Arc4 Arc3       # where to conduct the Rosetta calculations (remote options require '.leeds.ac.uk'
                           # if not local, it is assumed to be an arc cluster at the univerity of leeds, or another SGE cluster
                             # if not local, it is assumed you have already passed you ssh $PROXY id to the remote machine
 HOURS=04:00:00              # HH:MM:SS for arc run  # this must exceed the maximum time, please wildly overestimate.
 USER=chmjro                 # string                # your username on the remote machine, if required
 EMAIL=chmjro@leeds.ac.uk     # email address         # your email address
 remotedir=/nobackup/chmjro   # path                  # home directory on remote machine
-PROXYJUMP=chmjro@remote-access.leeds.ac.uk           # FALSE or proxy jump user and address [user]@remote-access.leeds.ac.uk
+PROXYJUMP=FALSE    #chmjro@remote-access.leeds.ac.uk           # FALSE or proxy jump user and address [user]@remote-access.leeds.ac.uk
 
 CPU=10                      # Integer               # Number of CPUs to use  (make sure RINST and MONST are equal or greater than CPUs)
                             # only for local, HPC uses a defualt of 100, though 50 are usually given
@@ -61,12 +61,12 @@ CPU=10                      # Integer               # Number of CPUs to use  (ma
 # If you are starting from structures that have not been relaxed in rosetta, you MUST initiate this step
 # you should generate a number of stuctures and pick the best to carry forward with the following options
 RELAX=True                  # True False            # Relax structure : relax into rosetta forcefield, creates output folder 'rosetta-1-relax'
-RIPDB=1coi.pdb              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
-RIRMM=False              # move-map.file False    # provide a movemap for the relaxation if restraints are required.
-RINST=10                    # Integer               # How many relaxations? : The number relaxations to make
+RIPDB=$1              # Filename False        # Input pdb file. (if False you can provide a list of pre-relaxed structures for mutagenesis with MIPDB)
+RIRMM=False              # move-map.file False    # provide a movemap for the relaxation if restraints are required. https://new.rosettacommons.org/docs/latest/rosetta_basics/file_types/movemap-file
+RINST=100                    # Integer               # How many relaxations? : The number relaxations to make
 RONSS=1                     # Integer               # How many results to carry through? : The number of best relaxations to carry through to the next stage 
                                                     # Typically do not exceed 10% of the total relaxations if making mutations
-ROMET=True                # True False            # Produce output metrics and graphs for the relaxations. 		!!!!! INCOMPLETE !!!!!
+ROMET=False                # True False            # Produce output metrics and graphs for the relaxations. 		!!!!! INCOMPLETE !!!!!
 ROPRS=False                 # True False            # Energy breakdown per residue output. - THIS PRODUCES A HUGE FILE!
 
 
@@ -85,7 +85,7 @@ MITHD=False                 # Filename False        # Threading a sequence to a 
                             #                         must be the same chain, only one chain at present
                             #                         if Filename, provide threading details below (MITHC)
                             #                         if Filename, ensure 'mires.tx' (below) denotes the residue changes in order to generate output. 
-MONST=10                # Integer               # many mutation runs? : The number of fast-relax-design runs to make PER relaxed structure (CPU must be a factor of this num
+MONST=100                # Integer               # many mutation runs? : The number of fast-relax-design runs to make PER relaxed structure (CPU must be a factor of this num
 MOMET=True                 # True False            # Produce output metrics and graphs for the mutagenesis.  	!!!!! INCOMPLETE !!!!!
 MOSEQ=True                  # True False            # Produce full output sequences (rosetta-full-sequence.fa)
 MOMSQ=True                  # True False            # Produce position specific sequence outputs dependent on resfile, required for clustering (rosetta-spec-sequence.fa), single chain only
@@ -98,7 +98,7 @@ MOPRS=False                 # True False            # Energy breakdown per resid
 # One chain per line, with residue positions, as below
 rm mires.tx 2>/dev/null 
 echo "
-A 11 12 15 16 19 20
+A 13 15 16
 " > mires.tx
 # PICK MUTATION TYPE (see here https://www.rosettacommons.org/docs/latest/rosetta_basics/file_types/resfiles)
 PICKACID=ALLAAxc            # ALLAAxc (all amino acid, not cys) or POLAR (DEHKNQRST) or APOLAR (ACFGILMPVWY)
@@ -113,19 +113,19 @@ PICKACID=ALLAAxc            # ALLAAxc (all amino acid, not cys) or POLAR (DEHKNQ
 MITHC=B                     # Character False       # chain idenifier for replaced sequence. Not currently applicable for mutil chain replacements	
 
 # DETERMINE STRINGENCY OF MOVEMAP ( how large is you 'flexible shell' around mutations)
-flexsc=9                    # integer               # shell, in angstrom, around mutant residues which will have flexible sidechains (and backbone)
-flexbb=9                    # integer               # shell, in angstrom, around flexible sidechains which will have flexible backbone
+flexsc=14                    # integer               # shell, in angstrom, around mutant residues which will have flexible sidechains (and backbone)
+flexbb=14                    # integer               # shell, in angstrom, around flexible sidechains which will have flexible backbone
 subjump=YES                 # YES or NO             # can subunits rigid-body move independent of each other !!!!! NO is NOT currently available !!!!
 
 ########################
 #      INTERFACE       #
 ########################
 # Analysis of the protein interface between chains.
-INTER=True                  # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
+INTER=True                 # True False            # Analyse interface : Use the InterfaceAnalyzer application to calculate ddG in Rosetta energy units (REU), creates output folder 'rosetta-3-inter'
 IIFAC="A"                   # chain_names           # qoute chains of single group, if analaysing the interface between chain groups A and B vs C and D then use "A B"
 IOSQE=True                  # True False            # For each of the analysed structures output, name - sequence - total energy - interface energy
 IOMET=True                 # True False            # Produce output metrics and graphs for the Interface Energy.			!!!!! INCOMPLETE !!!!!
-IOPRS=True                  # True False            # Energy breakdown per residue across interface output. - THIS PRODUCES A HUGE FILE!
+IOPRS=False                  # True False            # Energy breakdown per residue across interface output. - THIS PRODUCES A HUGE FILE!
 
 ########################
 #       CLUSTER        #
@@ -146,7 +146,7 @@ ndigits=5
 ########################################################################################################################################################################
 
 # allow temporary file preservation
-DEBUG=False			# True False    # If True, then intermediate files are not cleaned up!
+DEBUG=True			# True False    # If True, then intermediate files are not cleaned up!
 
 # find the current working directory
 oridir=$(pwd)
@@ -190,7 +190,8 @@ fi
 ########################
 # pymol 			# check on PyMOl
 rm nohup.out 2>/dev/null 
-nohup pymol -qc 2>/dev/null 
+nohup ~/software/pymol/bin/pymol -qc 2>/dev/null 
+sleep 2
 test=$(grep "command not found" nohup.out | wc -l )
 if [ $test = "0" ] ; then
 	echo "PyMOL detected"
@@ -223,7 +224,7 @@ elif [ $MUTATE = True ] ; then
 fi 
 
 # checking for contridictory or badly formatted inputs
-
+rm temp.pdb 2>/dev/null
 if [ $RELAX = True ] ; then
 	if [ -f $RIPDB ] ; then 
 		echo "read initial pdb file as $RIPDB for relaxations"
@@ -269,7 +270,9 @@ save temp.pdb
 quit' > rmhydro.pml
 		sed -i "s/HSD/HIS/g" fix-$RIPDB
 		pymol -qc fix-$RIPDB rmhydro.pml 1>/dev/null 
-		
+		while [ ! -f temp.pdb ] ; do 
+			sleep 1
+		done
 		RIPDBn=$(echo $RIPDB | sed 's/.pdb//g')
 		mv temp.pdb $RIPDBn-relax.pdb
 		RIPDB=$RIPDBn-relax.pdb
@@ -451,60 +454,46 @@ rmsmatrix ()
 
 #isolate 
 count=1
-rm test.pdb 2>/dev/null 
+rm test.pdb outfile.tx rmsfile.tx rmscur.pml 2>/dev/null 
 for i in $(cat pdb.list) ; do 
 echo MODEL    $count >> test.pdb
 cat $i >> test.pdb
 echo ENDMDL >> test.pdb
-count=$(($count +1))
 echo -en "\r$count"
+count=$(($count +1))
 done
 
 echo "load test.pdb
 intra_fit all " > rmscur.pml
-rm rmsout*.tx 2>/dev/null
-for i in $( seq 1 $(wc -l < pdb.list)) ; do
-echo "intra_rms_cur polymer, $i" >> rmscur.pml
-done
-echo "save check.pdb, c. A & i. 1" >> rmscur.pml
-rm check.pdb 2>/dev/null
-pymol -qc test.pdb rmscur.pml > temp.tx
 
+rm rmsout*.tx 2>/dev/null
+
+for i in $( seq 1 $(wc -l < pdb.list)) ; do
+echo "f=open('outfile.tx','a') 
+rms=cmd.intra_rms_cur('polymer', $i) 
+f.write('$i, %s\n' % rms)
+f.close()" >> rmscur.pml
+done
+
+echo "save check.pdb, c. A & i. 1" >> rmscur.pml
+
+rm check.pdb 2>/dev/null
+pymol -qc test.pdb rmscur.pml 
 while [ ! -f check.pdb ] ; do
 echo -en "\rgenerating rmsd's"
 sleep 1
 done
 
-rm check.pdb
-sleep 2
+#rm check.pdb
+#sleep 2
 
+sed -i 's/\[//g;s/\]//g;s/-1.0/0.0/g' outfile.tx
 for i in $(seq 1 $( wc -l < pdb.list) ) ; do 
-if [ $i = 1 ] ; then 
-echo 0.000 > zero.tx
-grep "state $i$" temp.tx | awk '{print $2}' > zerod.tx
-cat zero.tx zerod.tx > zerot.tx ; mv zerot.tx rmsout$i.tx
-else
-j=$(( $i - 1 ))
-grep "state $i$" temp.tx | awk '{print $2}' | sed ''$j' a 0.000' > rmsout$i.tx
-fi
+grep "^$i," outfile.tx | transpose | cut -c 1-4 | transpose | sed 's/ /,/g'  >> rmsfile.tx
 done
 
-rm rms.tx  trms.tx 2>/dev/null
-touch rms.tx  
-for i in $( seq 1 $(wc -l < pdb.list)) ; do
-echo -en "\rmatricising $i"
-sed 's/-1.0/0.0/g;s/\[/ /g;s/\]//g' rmsout$i.tx | sed 's/\.//g' | sed -n '1,'$(wc -l < pdb.list)'p' > trms.tx
-paste -d',' rms.tx trms.tx > ttrms.tx
-mv ttrms.tx rms.tx
-done
-sed -i 's/^,//g' rms.tx
-rm rmsout*.tx
-
-transpose pdb.list | sed 's/ /,/g' > tpdb.list
-cat tpdb.list rms.tx > rms2.tx
-echo name > rmsh.tx
-cat pdb.list >> rmsh.tx
-paste -d',' rmsh.tx  rms2.tx | sed 's/.pdb//g' > matrix.csv
+echo name $(awk -F',' '{print $1}' rmsfile.tx | transpose) | sed 's/ /,/g' > header.tx
+cat header.tx rmsfile.tx | sed 's/,,/,/g' | cut -d',' -f 1-$count > matrix.csv
 }
 
 
@@ -553,7 +542,10 @@ echo "' >> remote.tx
 ########################################################################################################################################################################
 #      INITIAL SCORE      #
 ###########################
-if [ 1 = 0 ] ; then # just not sure if this is useful
+
+# required when no relaxation is used, but mutagenesis is used, to allow ddG calculations
+
+if [ $RELAX = False ] && [ $MUTATE = True ] ; then 
 rm -r $oridir/rosetta-0-initial score.sc 2>/dev/null 
 mkdir $oridir/rosetta-0-initial
 cd $oridir/rosetta-0-initial
@@ -565,156 +557,91 @@ echo "
 -out:no_nstruct_label
 -score:weights ref2015" > sflag.file
 
+echo '0.0 Initial Score'
+cp ../$MIPDB .
+nuministruc=$(wc -l < $MIPDB)
+echo '0.1 - Scoring initial pdb list'
 
-if [ $RELAX = True ] ; then
-	echo '0.0 Initial Score'
-	if [ $RIPDB != False ] ; then
-		resifix $RIPDB
-		echo '0.1 - Scoring initial pdb'
-		
-		# For local compute
-		if [ $COMPUTE = LOCAL ] ; then 
-			cp $oridir/$RIPDB .
-			nohup score_jd2.$version.linuxgccrelease -in:file:s $RIPDB @sflag.file  2>/dev/null
+# For local compute
+if [ $COMPUTE = LOCAL ] ; then 
+	if [ $nuministruc -gt $CPU ] ; then 
+		for i in $(seq 1 $CPU) ; do
+			echo '
+			for j in $(seq '$i' '$CPU' $(wc -l < '$MIPDB') ) ; do
+			pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$MIPDB')
+			resifix oridir/$pdb
+			cp $oridir/$pdb .
+			nohup score_jd2.'$version'.linuxgccrelease -in:file:s $pdb @sflag.file  2>/dev/null 
+			done' > run-cpu$i
+			chmod 755 run-cpu$i
+			./run-cpu$i &
+		done
+		wait
+	else
+		for i in $(cat $MIPDB) ; do
+			cp $oridir/$i .
+			nohup score_jd2.$version.linuxgccrelease -in:file:s $i @sflag.file  2>/dev/null
 			wait
-		fi 
-
-		# for remote compute
-		if [ $COMPUTE != LOCAL ] ; then 
-			date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
-			cp ../remote.tx .
-			ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoScore
-			
-			scp $PROXY $oridir/$RIPDB $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
-			echo "-database /apps/applications/rosetta/3.10/1/default/main/database
--nstruct 1
--out:no_nstruct_label
-$(cat $oridir/glycan.tx)
--score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
-/apps/applications/rosetta/3.10/1/default/main/source/bin/score_jd2.default.linuxgccrelease -in:file:s $RIPDB @flag_"'$SGE_TASK_ID'".file
-" >> remote.tx
-			cat remote.tx | sed "s/XXX/1/g;s/YYY/1/g;s#VVV#$remotedir/$date-RosettaAutoScore#g" > run-rosetta-jd2-score.sh
-			scp $PROXY run-rosetta-jd2-score.sh $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
-			ssh $PROXY $USER@$COMPUTE " cd $remotedir/$date-RosettaAutoScore ; qsub run-rosetta-jd2-score.sh" > $date.tx 
-			arcjobid=$( awk '{print $3}' $date.tx | awk -F'.' '{print $1}' )
-			while [ $(ssh $PROXY $USER@$COMPUTE qstat | grep $arcjobid 2>/dev/null | wc -l ) != 0 ] ; do
-				ssh $PROXY $USER@$COMPUTE qstat | grep $arcjobid | cut -c 41-43,104- > arcjobid.tx
-				if [ $( wc -l < arcjobid.tx) = 1 ] && [ $(awk '{print $1}' arcjobid.tx) == qw ] ; then 
-					echo -en "\rsubmitted initial score to $COMPUTE, queueing "$(awk '{print $2}' arcjobid.tx)
-				elif [ $( wc -l < arcjobid.tx) = 1 ] && [ $(awk '{print $1}' arcjobid.tx) == r ] ; then 
-					echo -en "\rsubmitted initial score to $COMPUTE, running last job                            "
-				elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
-					echo -en "\rsubmitted initial score to $COMPUTE, queueing, "$(grep qw arcjobid.tx | awk '{print $1}')", running "$(grep r arcjobid.tx | wc -l )
-				fi
-				sleep 10
-			done
-			scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/score.sc scoret.sc 1>/dev/null
-			sleep 1
-			if [ ! -f score.sc ] ; then 
-				mv scoret.sc score.sc
-			else
-				sed '1,2d' scoret.sc >> score.sc
-			fi
-			scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/*.pdb . 1>/dev/null
-			ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoScore
-			if [ $( wc -l < score.sc ) -gt 2 ] ; then 
-				echo -en "\rsubmitted initial score to $COMPUTE, job successful              "
-				if [ $DEBUG != True ] ; then 
-					rm *.tx 
-				fi
-			else
-				echo -en "\rsubmitted initial score to $COMPUTE, job failed              "
-				exit 0
-			fi
-			echo ''
-		fi			
-	fi
-
-elif [ $MUTATE = True ] ; then 	 # <-- This has been disabled as probably not wanted
-	echo '0.0 - Initial Score'
-	cp ../$MIPDB .
-	nuministruc=$(wc -l < $MIPDB)
-	echo '0.1 - Scoring initial pdb list'
-	
-	# For local compute
-	if [ $COMPUTE = LOCAL ] ; then 
-		if [ $nuministruc -gt $CPU ] ; then 
-			for i in $(seq 1 $CPU) ; do
-				echo '
-				for j in $(seq '$i' '$CPU' $(wc -l < '$MIPDB') ) ; do
-				pdb=$(sed -n '"''"'$j'"'"'p'"'"' '$MIPDB')
-				resifix $pdb
-				cp $oridir/$pdb .
-				nohup score_jd2.'$version'.linuxgccrelease -in:file:s $pdb @sflag.file  2>/dev/null 
-				done' > run-cpu$i
-				chmod 755 run-cpu$i
-				./run-cpu$i &
-			done
-			wait
-		else
-			for i in $(cat $MIPDB) ; do
-				cp $oridir/$i .
-				nohup score_jd2.$version.linuxgccrelease -in:file:s $i @sflag.file  2>/dev/null
-				wait
-			done
-		fi
-	fi
-	
-	# for remote compute
-	if [ $COMPUTE != LOCAL ] ; then 
-		
-		for i in $(cat $MIPDB) ; do 
-			date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
-			cp ../remote.tx .
-			ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoScore
-			resifix $i
-			scp $PROXY $oridir/$i $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
-			echo "-database /apps/applications/rosetta/3.10/1/default/main/database
--nstruct 1
--out:no_nstruct_label
-$(cat $oridir/glycan.tx)
--score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
-/apps/applications/rosetta/3.10/1/default/main/source/bin/score_jd2.default.linuxgccrelease -in:file:s $i @flag_"'$SGE_TASK_ID'".file
-	" >> remote.tx
-			cat remote.tx | sed "s/XXX/1/g;s/YYY/1/g;s#VVV#$remotedir/$date-RosettaAutoScore#g" > run-rosetta-jd2-score.sh
-			scp $PROXY run-rosetta-jd2-score.sh $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
-			ssh $PROXY $USER@$COMPUTE " cd $remotedir/$date-RosettaAutoScore ; qsub run-rosetta-jd2-score.sh" > $date.tx 
-			arcjobid=$( awk '{print $3}' $date.tx | awk -F'.' '{print $1}' )
-			while [ $(ssh $PROXY $USER@$COMPUTE qstat | grep $arcjobid 2>/dev/null | wc -l ) != 0 ] ; do
-				ssh $PROXY $USER@$COMPUTE qstat | grep $arcjobid | cut -c 41-43,104- > arcjobid.tx
-				if [ $( wc -l < arcjobid.tx) = 1 ] && [ $(awk '{print $1}' arcjobid.tx) == qw ] ; then 
-					echo -en "\rsubmitted initial score to $COMPUTE, queueing "$(awk '{print $2}' arcjobid.tx)
-				elif [ $( wc -l < arcjobid.tx) = 1 ] && [ $(awk '{print $1}' arcjobid.tx) == r ] ; then 
-					echo -en "\rsubmitted initial score to $COMPUTE, running last job                 "
-				elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
-					echo -en "\rsubmitted initial score to $COMPUTE, queueing, "$(grep qw arcjobid.tx | awk '{print $1}')", running "$(grep r arcjobid.tx | wc -l )
-				fi
-				sleep 10
-			done
-			
-			scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/score.sc scoret.sc 1>/dev/null
-			sleep 1
-			if [ ! -f score.sc ] ; then 
-				mv scoret.sc score.sc
-			else
-				sed '1,2d' scoret.sc >> score.sc
-			fi
-			scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/*.pdb . 1>/dev/null
-			ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoScore
-			if [ $( wc -l < score.sc ) -gt 2 ] ; then 
-				echo -en "\rsubmitted initial score to $COMPUTE, job successful          "
-				if [ $DEBUG != True ] ; then
-					rm *.tx 
-				fi
-			else
-				echo -en "\rsubmitted initial score to $COMPUTE, job failed              "
-				exit 0
-			fi
-			echo ''
 		done
 	fi
+fi
 
-fi 
+# for remote compute
+if [ $COMPUTE != LOCAL ] ; then 
+	date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
+	cp ../remote.tx .
+	for i in $(cat $MIPDB) ; do 
+		cp ../$i .
+		resifix $i
+	done
+	ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoScore
+	scp $PROXY $oridir/*.pdb $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
+	scp $PROXY $oridir/$MIPDB $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
+	echo "-database /apps/applications/rosetta/3.10/1/default/main/database
+-nstruct 1
+-out:no_nstruct_label 
+$(cat $oridir/glycan.tx 2>/dev/null)
+-score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
+/apps/applications/rosetta/3.10/1/default/main/source/bin/score_jd2.default.linuxgccrelease -in:file:l $MIPDB @flag_"'$SGE_TASK_ID'".file
+" >> remote.tx
+	cat remote.tx | sed "s/XXX/1/g;s/YYY/1/g;s#VVV#$remotedir/$date-RosettaAutoScore#g" > run-rosetta-jd2-score.sh
+	scp $PROXY run-rosetta-jd2-score.sh $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/. 1>/dev/null
+	ssh $PROXY $USER@$COMPUTE " cd $remotedir/$date-RosettaAutoScore ; qsub run-rosetta-jd2-score.sh" > $date.tx 
+	arcjobid=$( awk '{print $3}' $date.tx | awk -F'.' '{print $1}' )
+	while [ $(ssh $PROXY $USER@$COMPUTE qstat | grep $arcjobid 2>/dev/null | wc -l ) != 0 ] ; do
+		ssh $PROXY $USER@$COMPUTE qstat | grep $arcjobid | cut -c 41-43,104- > arcjobid.tx
+		if [ $( wc -l < arcjobid.tx) = 1 ] && [ $(awk '{print $1}' arcjobid.tx) == qw ] ; then 
+			echo -en "\rsubmitted initial score to $COMPUTE, queueing "$(awk '{print $2}' arcjobid.tx)
+		elif [ $( wc -l < arcjobid.tx) = 1 ] && [ $(awk '{print $1}' arcjobid.tx) == r ] ; then 
+			echo -en "\rsubmitted initial score to $COMPUTE, running last job                 "
+		elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
+			echo -en "\rsubmitted initial score to $COMPUTE, queueing, "$(grep qw arcjobid.tx | awk '{print $1}')", running "$(grep r arcjobid.tx | wc -l )
+		fi
+		sleep 15
+	done
+	
+	scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/score.sc scoret.sc 1>/dev/null
+	sleep 1
+	if [ ! -f score.sc ] ; then 
+		mv scoret.sc score.sc
+	else
+		sed '1,2d' scoret.sc >> score.sc
+	fi
+	scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoScore/*.pdb . 1>/dev/null
+	ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoScore
+	if [ $( wc -l < score.sc ) -gt 2 ] ; then 
+		echo -en "\rsubmitted initial score to $COMPUTE, job successful          "
+		if [ $DEBUG != True ] ; then
+			rm *.tx 
+		fi
+	else
+		echo -en "\rsubmitted initial score to $COMPUTE, job failed              "
+		exit 0
+	fi
+	echo ''
+fi
+
+
 if [ $DEBUG != True ] ; then
 	rm sflag.file
 fi
@@ -767,6 +694,7 @@ if [ $RELAX = True ] ; then
 			echo "
 -out:path:all $oridir/rosetta-1-relax/temp$i
 -relax:fast
+-use_input_sc 
 $(cat $oridir/glycan.tx 2>/dev/null)
 -database /usr/local/rosetta/main/database
 -nstruct $(( $RINST / $CPU ))
@@ -845,11 +773,18 @@ done' > run-cpu$i
 		echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -out:suffix _"'$SGE_TASK_ID'"
 -relax:fast
+-use_input_sc 
 -out:suffix _"'$state'"
 -out:file:scorefile score.sc
 $(cat $oridir/glycan.tx 2>/dev/null)
 -nstruct 1
 -no_nstruct_label
+-ex1
+-ex2
+-use_input_sc
+-flip_HNQ
+-no_optH false
+-flip_HNQ
 -score:weights ref2015 \" > flag_"'$SGE_TASK_ID'".file
 /apps/applications/rosetta/3.10/1/default/main/source/bin/relax.linuxgccrelease -in:file:s $RIPDB @flag_"'$SGE_TASK_ID'".file
 " >> remote.tx
@@ -866,7 +801,7 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 			elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
 				echo -en "\rsubmitted relax to $COMPUTE, queueing "$(grep qw arcjobid.tx | awk '{print $2}')", running "$(grep r arcjobid.tx | wc -l )"        "
 			fi
-			sleep 30
+			sleep 15
 		done
 		scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoRelax/score.sc . 1>/dev/null
 		scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoRelax/*.pdb . 1>/dev/null
@@ -884,8 +819,8 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 
 	fi
 	
-elif [ $MUTATE = True ] ; then
-	cp ../*.pdb .
+#elif [ $MUTATE = True ] ; then
+#	cp ../*.pdb .
 fi
 
 
@@ -951,9 +886,13 @@ select shell, br. all near $flexsc of muts
 select shelled, br. all near $flexbb of shell
 select combined, muts + shell + shelled
 save shell.pdb, shell
-save combined.pdb, combined" >> mires.pml
-		nohup pymol -qc mires.pml 2>/dev/null 
-		wait
+save combined.pdb, combined
+quit" >> mires.pml
+		rm combined.pdb 2>/dev/null
+		nohup ~/software/pymol/bin/pymol -qc mires.pml 2>/dev/null 
+		while [ ! -f combined.pdb ] ; do
+			sleep 1
+		done
 		cat shell.pdb | grep ' CA ' | awk '{print $6,$5}' | sed 's/$/ NATAA/g' >> mires-auto.tx
 		rm shell.pdb
 		cp mires-auto.tx mires-auto-mutate.txt
@@ -1031,8 +970,11 @@ select shelled, br. all near $flexbb of shell
 select combined, muts + shell + shelled
 save shell.pdb, shell
 save combined.pdb, combined" >> mires.pml
-			nohup pymol -qc mires.pml 2>/dev/null 
-			wait
+			rm combined.pdb 2>/dev/null
+			nohup ~/software/pymol/bin/pymol -qc mires.pml 2>/dev/null 
+			while [ ! -f combined.pdb ] ; do
+				sleep 1
+			done
 			cat shell.pdb | grep ' CA ' | awk '{print $6,$5}' | sed 's/$/ NATAA/g' >> mires-auto-$mltthdseq.tx
 			#cat mires-auto.tx
 			rm shell.pdb mires.pml
@@ -1093,6 +1035,8 @@ save combined.pdb, combined" >> mires.pml
 -out:suffix _$MIRESname
 -out:file:scorefile score.sc
 -relax:fast
+-ex1 
+-use_input_sc 
 $(cat $oridir/glycan.tx 2>/dev/null)
 -database /usr/local/rosetta/main/database
 -nstruct $(( $MONST / $CPU ))
@@ -1199,6 +1143,8 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 			scp $PROXY $oridir/rosetta-2-mutate/mires-auto-mutate.txt $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/res.file 1>/dev/null
 			echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -relax:fast
+-ex1 
+-use_input_sc 
 -out:suffix _"'$state'"
 -out:file:scorefile score.sc
 $(cat $oridir/glycan.tx 2>/dev/null )
@@ -1223,7 +1169,7 @@ $(cat $oridir/glycan.tx 2>/dev/null )
 				elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
 					echo -en "\rSubmitted mutate to $COMPUTE, queueing "$(grep qw arcjobid.tx | awk '{print $2}')", running "$(grep r arcjobid.tx | wc -l )"        "
 				fi
-				sleep 20
+				sleep 15
 			done
                         scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoMutate/score.sc scoret.tx 1>/dev/null
                         if [ ! -f score.sc ] ; then
@@ -1361,14 +1307,18 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 	if [ $COMPUTE != LOCAL ] ; then 
 		echo "3.1 - Running remote interface analysis"
 		date=$(echo $(date -R | cut -c 6-7,9-11,15-25 | sed 's/ /-/g;s/://g')$RANDOM)
-		cp $oridir/rosetta-1-relax/*.pdb .
-		cp $oridir/rosetta-2-mutate/*.pdb .
+		if [ $RELAX = True ] ; then 
+			cp $oridir/rosetta-1-relax/*.pdb .
+		fi
+		if [ $MUTATE = True ] ; then 
+			cp $oridir/rosetta-2-mutate/*.pdb .
+		fi
 		ls -v *.pdb > pdb.list
 		cp ../remote.tx .
 		ssh $PROXY $USER@$COMPUTE mkdir $remotedir/$date-RosettaAutoInter
 		
 		
-		scp $PROXY $oridir/rosetta-2-mutate/*.pdb $USER@$COMPUTE:$remotedir/$date-RosettaAutoInter/. 1>/dev/null
+		scp $PROXY $oridir/rosetta-3-inter/*.pdb $USER@$COMPUTE:$remotedir/$date-RosettaAutoInter/. 1>/dev/null
 		scp $PROXY $oridir/rosetta-3-inter/pdb.list $USER@$COMPUTE:$remotedir/$date-RosettaAutoInter/. 1>/dev/null
 		echo "-database /apps/applications/rosetta/3.10/1/default/main/database
 -out:no_nstruct_label
@@ -1402,10 +1352,11 @@ $(cat $oridir/glycan.tx 2>/dev/null)
 			elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
 				echo -en "\rsubmitted InterfaceAnalyzer to $COMPUTE, queueing "$(grep qw arcjobid.tx | awk '{print $2}')", running "$(grep r arcjobid.tx | wc -l )"        "
 			fi
-			sleep 30
+			sleep 15
+		
 		done
 		scp $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoInter/inter_score.sc . 1>/dev/null
-		ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoInter
+		#ssh $PROXY $USER@$COMPUTE rm -r $remotedir/$date-RosettaAutoInter
 		if [ $( wc -l < inter_score.sc ) -gt 2 ] ; then 
 			echo -en "\rsubmitted InterfaceAnalyzer to $COMPUTE, job successful              "
 		else
@@ -1431,17 +1382,18 @@ rm -r $oridir/rosetta-4-analysis 2>/dev/null
 mkdir $oridir/rosetta-4-analysis
 cd  $oridir/rosetta-4-analysis
 
+# initiate the 'Per-residue Energy Breakdown' rosetta analysis
 cenperes=False
-if [ $ROPRS = True ] ; then 
-enperes=1-relax
+if [ $ROPRS = True ] && [ $RELAX = True ]; then 
+enperes="$enperes rosetta-1-relax"
 cenperes=True
 fi 
-if [ $MOPRS = True ] ; then 
-enperes="$enperes 2-mutate"
+if [ $MOPRS = True ] && [ $MUTATE = True ] ; then 
+enperes="$enperes rosetta-2-mutate"
 cenperes=True
 fi 
-if [ $IOPRS = True ] ; then 
-enperes="$enperes 3-inter"
+if [ $IOPRS = True ] && [ $INTER = True ] ; then 
+enperes="$enperes rosetta-3-inter"
 cenperes=True
 fi 
 
@@ -1449,7 +1401,7 @@ if [ $cenperes = True ] ; then
 
 	mkdir pdb
 	for i in $enperes ; do 
-		cp $oridir/rosetta-$i/*.pdb pdb/.
+		cp $oridir/$i/*.pdb pdb/.
 	done
 
 	cd  pdb
@@ -1523,7 +1475,7 @@ cat default.out >> perres.out ; rm default.out
 			elif [ $( wc -l < arcjobid.tx) -gt 1 ] ; then 
 				echo -en "\rsubmitted energy breakdown analyze to $COMPUTE, queueing "$(grep qw arcjobid.tx | awk '{print $2}')", running "$(grep r arcjobid.tx | wc -l )"        "
 			fi
-			sleep 20
+			sleep 15
 		done
 		#echo "downloading energy breakdown, of size $(ssh $PROXY $USER@$COMPUTE ls -lh $remotedir/$date-RosettaAutoPer | grep perres.out | awk '{print $5}')"
 		ssh $PROXY $USER@$COMPUTE:$remotedir/$date-RosettaAutoPer "sort perres.out | uniq > perres2.out ; mv perres2.out perres.out"
@@ -1554,7 +1506,7 @@ if [ $RELAX = False ] ; then
 fi
 
 
-if [ $MOSEQ = True ] ; then 
+if [ $MUTATE = True ] && [ $MOSEQ = True ] ; then 
 	#echo 'all chain initial'
 	rm seqgen.fa  2>/dev/null 
 	name=$(echo $RIPDB | sed 's/.pdb//g' )
@@ -1571,21 +1523,22 @@ if [ $MOSEQ = True ] ; then
 	done
 	mv seqgen.fa rosetta-full-sequence.fa
 	# generate mutant only fasta file for threading
-for chain in $(cat rosetta-full-sequence.fa | grep '>' | rev | cut -c 1 | rev | sort | uniq) ; do
-grep -A1 "_$chain$" rosetta-full-sequence.fa | grep -A1 mutate | grep -v '^--' > rosetta-thread-$chain-sequence.fa
-kpvar=$(grep -A1 "_$chain$" rosetta-full-sequence.fa | grep -A1 mutate | grep -v '^--' | head -1 | awk -F'/' '{print $NF}')
-rmvar=$(grep -A1 "_$chain$" rosetta-full-sequence.fa | grep -A1 mutate | grep -v '^--' | head -1 | sed "s/$kpvar//g" | cut -c 2-)
-sed -i "s#$rmvar##g" rosetta-thread-$chain-sequence.fa
-done
+	for chain in $(cat rosetta-full-sequence.fa | grep '>' | rev | cut -c 1 | rev | sort | uniq) ; do
+		grep -A1 "_$chain$" rosetta-full-sequence.fa | grep -A1 mutate | grep -v '^--' > rosetta-thread-$chain-sequence.fa
+		kpvar=$(grep -A1 "_$chain$" rosetta-full-sequence.fa | grep -A1 mutate | grep -v '^--' | head -1 | awk -F'/' '{print $NF}')
+		rmvar=$(grep -A1 "_$chain$" rosetta-full-sequence.fa | grep -A1 mutate | grep -v '^--' | head -1 | sed "s/$kpvar//g" | cut -c 2-)
+		sed -i "s#$rmvar##g" rosetta-thread-$chain-sequence.fa
+	done
 fi 
 
 ################################################	
 ########################  Generate specific fasta sequence files with total energy and interface energy (if appropriate)
-if [ $MOMSQ = True ] && [ $MITHD = False ] ; then 
+
+if [ $MUTATE = True ] && [ $MOMSQ = True ] && [ $MITHD = False ] ; then 
 	#echo 'RIPDB = '$RIPDB
 	#echo 'spec chain initial'
 	rm seqgen.fa specseqpdb.txt 2>/dev/null 
-	cat $oridir/rosetta-2-mutate/$MIRES | sed '1,2d' | grep -v 'NATAA$' | grep -v 'NATRO' > specseqgen.tx
+	cat $oridir/rosetta-2-mutate/mires-auto.txt | sed '1,2d' | grep -v 'NATAA$' | grep -v 'NATRO' > specseqgen.tx
 	
 	for i in $(seq 1 $(wc -l < specseqgen.tx) ) ; do 
 		#sed -n ''$i'p' specseqgen.tx
@@ -1616,7 +1569,8 @@ if [ $MOMSQ = True ] && [ $MITHD = False ] ; then
 	done
 	mv seqgen.fa rosetta-spec-sequence.fa
 fi
-if [ $MOMSQ = True ] && [ $MITHD != False ] ; then 
+
+if [ $MUTATE = True ] && [ $MOMSQ = True ] && [ $MITHD != False ] ; then 
 	rm seqgen.fa specseqpdb.txt 2>/dev/null 
 	specseqcha=$(cut -c 1 $oridir/mires.tx | sed -n '2p')
 	cut -c 3- $oridir/mires.tx | sed -n '2p'| tr ' ' '\n' | sed '$d' > mires-col.tx 
@@ -1650,23 +1604,40 @@ if [ $MOMSQ = True ] && [ $MITHD != False ] ; then
 fi
 
 cd $oridir/rosetta-4-analysis
+#prepare output for the relaxations only
+if [ $RELAX = True ] && [ $MUTATE = False ]; then
+	echo 'name,total-REU' > relaxed-output.csv
+	if [ $INTER = True ] ; then 
+		echo 'name,total-REU,Interface-REU' > relaxed-output.csv
+	fi
+	for roname in $(sed '1,2d' $oridir/rosetta-1-relax/score.sc | awk '{print $22}') ; do 
+		rotote=$(grep $roname$ $oridir/rosetta-1-relax/score.sc | awk '{print $2}')
+		if [ $INTER = True ] ; then 
+			rointe=$(grep $roname$ $oridir/rosetta-3-inter/inter_score.sc | awk '{print $6}')
+			echo "$roname,$rotote,$rointe" >> relaxed-output.csv
+		else
+			echo "$roname,$rotote" >> relaxed-output.csv
+		fi
+	done
+fi
 
 #prepare output for the relaxations
-if [ $RELAX = True ] ; then
+if [ $RELAX = True ] && [ $MUTATE = True ]; then
 	echo 'name,total-REU,Sequence' > relaxed-output.csv
 	if [ $INTER = True ] ; then 
 		echo 'name,total-REU,Interface-REU,Sequence' > relaxed-output.csv
 	fi
 	for roname in $(sed '1,2d' $oridir/rosetta-1-relax/score.sc | awk '{print $22}') ; do 
 		rotote=$(grep $roname$ $oridir/rosetta-1-relax/score.sc | awk '{print $2}')
-
+		if [ $MUTATE = True ] ; then
 		specseqcha=$(cut -c 1 $oridir/mires.tx | sed -n '2p')
 		rosseq=$(sed -n '2p' rosetta-spec-sequence.fa)
-		if [ $INTER = True ] ; then 
-			rointe=$(grep $roname$ $oridir/rosetta-3-inter/inter_score.sc | awk '{print $6}')
-			echo "$roname,$rotote,$rointe,$rosseq" >> relaxed-output.csv
-		else
-			echo "$roname,$rotote,$rosseq" >> relaxed-output.csv
+			if [ $INTER = True ] ; then 
+				rointe=$(grep $roname$ $oridir/rosetta-3-inter/inter_score.sc | awk '{print $6}')
+				echo "$roname,$rotote,$rointe,$rosseq" >> relaxed-output.csv
+			else
+				echo "$roname,$rotote,$rosseq" >> relaxed-output.csv
+			fi
 		fi
 	done
 fi
@@ -1720,7 +1691,7 @@ if [ $MUTATE = True ] ; then
 	
 fi
 if [ $DEBUG != True ] ; then
-	rm *.tx mutate-outputh.csv temp pdb.list 
+	rm *.tx mutate-outputh.csv temp pdb.list 2>/dev/null 
 fi
 
 ########################################################################################################################################################################
@@ -1751,14 +1722,14 @@ if [ $action != False ] ; then
 	mkdir $oridir/rosetta-5-cluster
 	cd  $oridir/rosetta-5-cluster
 
+cp $oridir/rosetta-4-analysis/relaxed-output.csv .
+if [ $MUTATE = True ] ; then
 cp $oridir/rosetta-4-analysis/mutate-output.csv .
 cp $oridir/rosetta-4-analysis/rosetta-spec-sequence.fa .
-
-# define energy col if mutate 
-if [ $MUTATE = True ] ; then 
-energycol=total-REU
 fi
 
+# define energy col
+energycol=total-REU
 # define energy col if inter
 if [ $INTER = True ] ; then 
 energycol=Interface-REU
@@ -1767,11 +1738,21 @@ fi
 ###########################
 ## GENERATE RMSD SIMILARITY MATRIX
 if [ $rmsd = yes ] ; then 
-	echo "		generating RMSD matrix"
-	for i in $(awk -F',' '{print $1}' mutate-output.csv | sed '/name/d;s/$/.pdb/g') ; do 
-		cp $oridir/rosetta-4-analysis/pdb/$i .
-	done
-
+	if [ ! -d $oridir/rosetta-4-analysis/pdb ] ; then
+		mkdir $oridir/rosetta-4-analysis/pdb
+		cp $oridir/rosetta-*/*.pdb $oridir/rosetta-4-analysis/pdb/. 2>/dev/null
+	fi
+	
+	echo "       generating RMSD matrix"
+	if [ $MUTATE = True ] ; then
+		for i in $(awk -F',' '{print $1}' mutate-output.csv | sed '/name/d;s/$/.pdb/g') ; do 
+			cp $oridir/rosetta-4-analysis/pdb/$i .
+		done
+	else 
+		for i in $(awk -F',' '{print $1}' relaxed-output.csv | sed '/name/d;s/$/.pdb/g') ; do 
+			cp $oridir/rosetta-4-analysis/pdb/$i .
+		done
+	fi
 	ls -v *.pdb > pdb.list
 	if [ $(wc -l < pdb.list) -gt 2000 ] ; then 
 		echo "too many pdbs for rms matrix!"
@@ -1781,7 +1762,11 @@ if [ $rmsd = yes ] ; then
 		mv matrix.csv rmsd-matrix.csv
 		rm *.pdb
 		echo ', score' > inter-score-only.sc
-		sed 's/,/ /g' mutate-output.csv | transpose | grep "name\|$energycol" | transpose | sed 's/ /,/g' |  grep -v name >> inter-score-only.sc
+		if [ $MUTATE = True ] ; then 
+			sed 's/,/ /g' mutate-output.csv | transpose | grep "name\|$energycol" | transpose | sed 's/ /,/g' |  grep -v name >> inter-score-only.sc
+		else
+			sed 's/,/ /g' relaxed-output.csv | transpose | grep "name\|$energycol" | transpose | sed 's/ /,/g' |  grep -v name >> inter-score-only.sc
+		fi
 
 echo "
 
@@ -1882,7 +1867,7 @@ figure.savefig('rms-heat-average.png', dpi=800)
 print("Success")
 
 " > mc.py
-python mc.py 2>/dev/null
+python3 mc.py 2>/dev/null
 
 fi
 fi 
@@ -1890,7 +1875,7 @@ fi
 ###########################
 ## GENERATE SEQUENCE SIMILARITY MATRIX AND ENERGY OVERLAY
 if [ $sequence = yes ] ; then	
-echo "		generating sequence matrix"
+echo "       generating sequence matrix"
 echo "
 import numpy as np
 import pandas as pd
@@ -2016,7 +2001,7 @@ sns_heat = sns.heatmap(np.array(matrix))
 figure = sns_heat.get_figure()
 figure.savefig('seq-heat-average.png', dpi=800)
 " > mc.py
-python mc.py 2>/dev/null
+python3 mc.py 2>/dev/null
 
 awk 'BEGIN{OFS=FS=","}
 NR>0 {
@@ -2036,13 +2021,14 @@ NR>0 {
 fi
 
 fi
-
+rm *.tx rosetta-spec-sequence.fa mutate-output.csv *.list rmscur.pml inter-score-only.sc encoded_sequenced.npy mc.py 2>/dev/null
 
 
 ########################################################################################################################################################################
 #    Clean up    #
 ########################################################################################################################################################################
-
-
+rm -r $oridir/rosetta-4-analysis/pdb 2>/dev/null
+rm -r $oridir/rosetta-3-inter/*.pdb 2>/dev/null
+rm -r $oridir/*.tx $oridir/nohup.out
 echo '6.0 Complete!'
 
